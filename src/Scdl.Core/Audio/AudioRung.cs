@@ -1,0 +1,42 @@
+namespace Scdl.Core.Audio;
+
+public enum AudioCodec
+{
+    Unknown = 0,
+    Opus = 1,
+    Mp3 = 2,
+    Aac = 3,
+}
+
+/// <summary>
+/// How a transcoding is delivered. Progressive is a single file; HLS is a
+/// playlist of segments and may or may not need a real muxer to reassemble.
+/// </summary>
+public enum DeliveryProtocol
+{
+    Unknown = 0,
+    Progressive = 1,
+    Hls = 2,
+}
+
+/// <summary>
+/// One rung of SoundCloud's transcoding ladder, with the bitrate the CDN
+/// genuinely serves rather than the one a downloader site advertises.
+/// </summary>
+/// <param name="Preset">SoundCloud's own preset identifier, for example <c>aac_256k</c>.</param>
+/// <param name="Kbps">Real bitrate, or 0 when the preset is unrecognised.</param>
+/// <param name="Codec">Codec the rung decodes to.</param>
+/// <param name="FileExtension">Container extension that holds this codec without transcoding.</param>
+/// <param name="RequiresGoPlus">True when only a Go+ token unlocks the rung.</param>
+public readonly record struct AudioRung(string Preset,
+                                        int Kbps,
+                                        AudioCodec Codec,
+                                        string FileExtension,
+                                        bool RequiresGoPlus)
+{
+    /// <summary>True when SoundCloud named a preset this build has never heard of.</summary>
+    public bool IsUnknown => Kbps == 0;
+
+    public override string ToString()
+        => IsUnknown ? $"{Preset} (unrecognised)" : $"{Preset} ({Kbps} kbps {Codec})";
+}

@@ -1,0 +1,57 @@
+<Project>
+  <PropertyGroup Label="Framework">
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Build">
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Nullability is the compiler warning class worth failing a build over.
+         Analyzer findings are escalated separately below, so a future analyzer
+         bump cannot break an unrelated build.
+         Note this is WarningsAsErrors, which takes a list of warning IDs plus
+         the special token "nullable" - not TreatWarningsAsErrors, which is the
+         boolean one. Writing <WarningsAsErrors>true</WarningsAsErrors> parses
+         "true" as a warning ID that does not exist and escalates nothing. -->
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+
+    <!-- On by default for every project, including any added later. Without it
+         the compiler never binds doc comments, so the doc-comment analyzers are
+         silently dead on the build while Rider still reports them - the IDE and
+         CI quietly disagreeing about the same code. Projects that genuinely do
+         not want it opt out explicitly. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Label="CodeAnalysis">
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Aot">
+    <!-- Every project is held to AOT and trim rules, not just the one that
+         publishes AOT. A library that quietly reaches for reflection is far
+         cheaper to catch here than at publish time. The test project opts out,
+         because Moq builds proxies at runtime. -->
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- Analyzers live in Directory.Packages.props as GlobalPackageReference.
+       That item type exists for exactly this case and already implies
+       PrivateAssets="all" plus the right IncludeAssets, so there is nothing to
+       restate - or get wrong - here. -->
+
+  <PropertyGroup Label="Packaging">
+    <Authors>danganhphu</Authors>
+    <RepositoryUrl>https://github.com/danganhphu/scdl-4life</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>

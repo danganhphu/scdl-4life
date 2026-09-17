@@ -1,0 +1,21 @@
+<Solution>
+    <Folder Name="/src/">
+        <Project Path="src/Scdl.Core/Scdl.Core.csproj" />
+        <Project Path="src/Scdl.Cli/Scdl.Cli.csproj" />
+    </Folder>
+    <Folder Name="/tests/">
+        <Project Path="tests/Scdl.Core.Tests/Scdl.Core.Tests.csproj" />
+    </Folder>
+    <Folder Name="/_solution items/">
+        <File Path=".editorconfig" />
+        <File Path=".gitattributes" />
+        <File Path=".gitignore" />
+        <File Path="build.ps1" />
+        <File Path="Directory.Build.props" />
+        <File Path="Directory.Packages.props" />
+        <File Path="dotnet.config" />
+        <File Path="global.json" />
+        <File Path="nuget.config" />
+        <File Path="README.source.md" />
+    </Folder>
+</Solution>

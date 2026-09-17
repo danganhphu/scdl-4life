@@ -1,0 +1,64 @@
+## Normalise line endings on the way into the repo. Everything is LF in git;
+## the working tree gets whatever the platform wants on checkout.
+* text=auto
+
+## Source
+*.cs        text diff=csharp
+*.csx       text diff=csharp
+*.md        text diff=markdown
+*.json      text
+*.xml       text
+*.yml       text
+*.yaml      text
+*.editorconfig text
+
+## MSBuild and solution files
+*.csproj    text
+*.props     text
+*.targets   text
+*.slnx      text
+*.sln       text eol=crlf
+
+## Scripts: shells are picky about their own endings, so pin both directions.
+*.ps1       text eol=crlf
+*.psm1      text eol=crlf
+*.psd1      text eol=crlf
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+*.sh        text eol=lf
+
+## Binary - never diff, never normalise
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.7z        binary
+*.dll       binary
+*.exe       binary
+*.pdb       binary
+*.snk       binary
+*.pfx       binary
+
+## Audio fixtures used by tests must survive byte identical.
+*.mp3       binary
+*.m4a       binary
+*.aac       binary
+*.wav       binary
+*.flac      binary
+*.ogg       binary
+*.opus      binary
+*.ts        binary
+
+## HLS playlists are text fixtures, but their exact bytes matter to the parser,
+## so keep them LF everywhere rather than letting Windows rewrite them.
+*.m3u8      text eol=lf
+
+## Keep generated and vendored files out of language stats and diffs.
+*.g.cs              linguist-generated=true -diff
+*.Designer.cs       linguist-generated=true -diff
+**/obj/**           linguist-generated=true
+**/bin/**           linguist-generated=true
