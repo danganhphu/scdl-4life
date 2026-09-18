@@ -57,11 +57,15 @@ public sealed class SoundCloudClientTests
         var handler = StubHttpMessageHandler.ReturningJson(json);
         var client = CreateClient(handler, ClientIdProvider().Object);
 
-        var tracks = await client.ResolveAsync(TrackUrl, CancellationToken.None);
+        var resolved = await client.ResolveAsync(TrackUrl, CancellationToken.None);
 
-        await Assert.That(tracks.Count).IsEqualTo(1);
-        await Assert.That(tracks[0].Id).IsEqualTo(12345L);
-        await Assert.That(tracks[0].DisplayArtist).IsEqualTo("artist");
+        await Assert.That(resolved.Count).IsEqualTo(1);
+        await Assert.That(resolved.Tracks[0].Id).IsEqualTo(12345L);
+        await Assert.That(resolved.Tracks[0].DisplayArtist).IsEqualTo("artist");
+
+        // A single track is not a set, so nothing downstream writes an album.
+        await Assert.That(resolved.IsSet).IsFalse();
+        await Assert.That(resolved.SetTitle).IsNull();
     }
 
     [Test]
@@ -124,11 +128,15 @@ public sealed class SoundCloudClientTests
 
         var client = CreateClient(handler, ClientIdProvider().Object);
 
-        var tracks = await client.ResolveAsync(TrackUrl, CancellationToken.None);
+        var resolved = await client.ResolveAsync(TrackUrl, CancellationToken.None);
 
-        await Assert.That(tracks.Count).IsEqualTo(2);
-        await Assert.That(tracks[0].Id).IsEqualTo(101L);
-        await Assert.That(tracks[1].Id).IsEqualTo(102L);
+        await Assert.That(resolved.Count).IsEqualTo(2);
+        await Assert.That(resolved.Tracks[0].Id).IsEqualTo(101L);
+        await Assert.That(resolved.Tracks[1].Id).IsEqualTo(102L);
+
+        // The set's title survives the flattening; it becomes the album tag.
+        await Assert.That(resolved.IsSet).IsTrue();
+        await Assert.That(resolved.SetTitle).IsEqualTo("Set");
     }
 
     [Test]

@@ -155,7 +155,8 @@ internal static class CommandFactory
         var downloader = provider.GetRequiredService<ITrackDownloader>();
         var tagger = provider.GetRequiredService<IMediaTagger>();
 
-        var tracks = await soundCloud.ResolveAsync(arguments.Url, cancellationToken);
+        var resolved = await soundCloud.ResolveAsync(arguments.Url, cancellationToken);
+        var tracks = resolved.Tracks;
 
         if (tracks.Count is 0)
         {
@@ -196,7 +197,13 @@ internal static class CommandFactory
 
                 if (!arguments.SkipTags)
                 {
-                    await tagger.TryTagAsync(result.FilePath, track, cancellationToken);
+                    // Only a set carries an album and a running order. A single
+                    // track gets neither rather than a made up one.
+                    SetPosition? position = resolved.SetTitle is { Length: > 0 } setTitle
+                                                ? new SetPosition(setTitle, i + 1, tracks.Count)
+                                                : null;
+
+                    await tagger.TryTagAsync(result.FilePath, track, position, cancellationToken);
                 }
 
                 renderer.Saved(result);
@@ -275,7 +282,7 @@ internal static class CommandFactory
         var renderer = new ConsoleRenderer(AnsiConsole.Console);
         var soundCloud = provider.GetRequiredService<ISoundCloudClient>();
 
-        var tracks = await soundCloud.ResolveAsync(url, cancellationToken);
+        var tracks = (await soundCloud.ResolveAsync(url, cancellationToken)).Tracks;
 
         if (tracks.Count is 0)
         {

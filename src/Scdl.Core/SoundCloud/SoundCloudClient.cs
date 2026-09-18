@@ -25,7 +25,7 @@ internal sealed class SoundCloudClient(HttpClient http,
 
     private readonly SoundCloudOptions _options = options.Value;
 
-    public async Task<IReadOnlyList<Track>> ResolveAsync(Uri url, CancellationToken cancellationToken)
+    public async Task<ResolvedTracks> ResolveAsync(Uri url, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(url);
 
@@ -48,7 +48,7 @@ internal sealed class SoundCloudClient(HttpClient http,
                                 "SoundCloud returned an unreadable track payload.",
                                 ScdlErrorCode.UnreadablePayload);
 
-                return [track];
+                return new() { Tracks = [track] };
 
             case "playlist":
             case "system-playlist":
@@ -57,7 +57,11 @@ internal sealed class SoundCloudClient(HttpClient http,
                                    "SoundCloud returned an unreadable playlist payload.",
                                    ScdlErrorCode.UnreadablePayload);
 
-                return await HydrateAsync(playlist.Tracks, cancellationToken).ConfigureAwait(false);
+                return new()
+                {
+                    Tracks = await HydrateAsync(playlist.Tracks, cancellationToken).ConfigureAwait(false),
+                    SetTitle = playlist.Title,
+                };
 
             case "user":
                 throw new ScdlException(

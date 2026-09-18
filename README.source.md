@@ -39,7 +39,9 @@ scdl get "https://soundcloud.com/<user>/<track>" -o D:\Music
 scdl get "<url>" --oauth "<go-plus-token>" -o D:\Music
 ```
 
-`get` also takes a set or playlist URL and expands it. One bad track in a set does not abandon the rest.
+`get` also takes a set or playlist URL and expands it. One bad track in a set does not abandon the rest, and every track
+from a set is tagged with the set as its album and with its position in the running order, so a player puts them back in
+the order the uploader chose rather than in alphabetical order.
 
 | Option                      |                                                                                 |
 |-----------------------------|---------------------------------------------------------------------------------|
