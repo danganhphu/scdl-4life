@@ -52,6 +52,12 @@
        build with MSB4030. Leaving them empty is the only working configuration. -->
 
   <ItemGroup>
+    <!-- Everything in this assembly is internal, including the composition root
+         itself. The tests are the only outside caller it has. -->
+    <InternalsVisibleTo Include="Scdl.Cli.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Scdl.Core\Scdl.Core.csproj" />
   </ItemGroup>
 

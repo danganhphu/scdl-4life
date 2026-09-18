@@ -5,6 +5,7 @@
     </Folder>
     <Folder Name="/tests/">
         <Project Path="tests/Scdl.Core.Tests/Scdl.Core.Tests.csproj" />
+        <Project Path="tests/Scdl.Cli.Tests/Scdl.Cli.Tests.csproj" />
     </Folder>
     <Folder Name="/_solution items/">
         <File Path=".editorconfig" />

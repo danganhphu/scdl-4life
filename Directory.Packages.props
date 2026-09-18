@@ -44,5 +44,10 @@
     <PackageVersion Include="TUnit" Version="1.68.4" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
+
+    <!-- Ships in lockstep with Spectre.Console and must stay pinned to the same
+         version: TestConsole implements IAnsiConsole, which is not a stable
+         interface across releases. -->
+    <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2" />
   </ItemGroup>
 </Project>

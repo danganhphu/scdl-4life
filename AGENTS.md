@@ -10,11 +10,12 @@ what that bitrate is. The honesty is the product: SoundCloud stores no 320 kbps 
 people paying for sites that pretend otherwise. Never add a code path, a label or a doc line that implies a bitrate the
 CDN does not serve.
 
-| Project                 | Role                                                                             |
-|-------------------------|----------------------------------------------------------------------------------|
-| `src/Scdl.Core`         | Resolving, ranking, downloading, tagging. No console dependency. Ships XML docs. |
-| `src/Scdl.Cli`          | System.CommandLine parsing, Spectre.Console rendering. Publishes Native AOT.     |
-| `tests/Scdl.Core.Tests` | TUnit, Moq, Bogus, plus architecture tests over the Core assembly.               |
+| Project                 | Role                                                                                |
+|-------------------------|-------------------------------------------------------------------------------------|
+| `src/Scdl.Core`         | Resolving, ranking, downloading, tagging. No console dependency. Ships XML docs.    |
+| `src/Scdl.Cli`          | System.CommandLine parsing, Spectre.Console rendering. Publishes Native AOT.        |
+| `tests/Scdl.Core.Tests` | TUnit, Moq, Bogus, plus architecture tests over the Core assembly.                  |
+| `tests/Scdl.Cli.Tests`  | Parsing and rendering, through Spectre's `TestConsole`. No network, no mock console. |
 
 ## Commands
 
@@ -50,6 +51,11 @@ VSTest-bridge opt-in, it conflicts with the global.json runner, and the .NET 10 
 - **Primary constructors** for injected dependencies. Only keep an explicit field when the parameter is transformed,
   such as `IOptions<T>.Value`.
 - **`nameof` over string literals** anywhere the string names a member.
+- **C# 14 extension members** where the call reads as a question about a value that already exists -
+  `track.RankStreams()`, not `TrackStreams.Rank(track)`. The model types stay plain deserialization targets with no
+  behaviour. Two `extension(...)` blocks in one class currently trip CA1708; see `claude-memory/traps`.
+- **One literal per fact.** A string repeated at three call sites is three chances to get it wrong -
+  `AudioFileExtensions` exists for exactly that reason. A constant with a single user does not need a home.
 - Prefer `IReadOnlyList<T>` on public surfaces, `FrozenDictionary`/`FrozenSet` for lookup tables built once.
 - ASCII punctuation only in code, comments and commit messages: hyphens, straight quotes, no ellipsis character.
 - Comments explain **why**, not what. A comment restating the line below it is noise; a comment naming the trap that
