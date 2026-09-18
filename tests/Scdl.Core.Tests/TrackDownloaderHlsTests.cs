@@ -241,8 +241,12 @@ public sealed class TrackDownloaderHlsTests
 
         var muxer = Muxer(available: true);
 
-        muxer.Setup(media => media.MuxAsync(It.IsAny<Uri>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-             .Returns((Uri _, string outputPath, CancellationToken token)
+        muxer.Setup(media => media.MuxAsync(
+                        It.IsAny<Uri>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<CancellationToken>()))
+             .Returns((Uri _, string outputPath, string _, CancellationToken token)
                  => File.WriteAllTextAsync(outputPath, "MUXED", token));
 
         var downloader = Downloader(handler, SoundCloud(), muxer);
@@ -259,6 +263,89 @@ public sealed class TrackDownloaderHlsTests
         // has been moved into place under its real name.
         await Assert.That(Path.GetExtension(result.FilePath)).IsEqualTo(".m4a");
         await Assert.That(directory.Files.Count).IsEqualTo(1);
+    }
+
+    /// <summary>
+    /// ffmpeg picks its muxer from the extension of the file it is told to
+    /// write, and that file is still a .part at the time. Inferring the
+    /// container from the path produced "Unable to choose an output format" and
+    /// no file at all, which is why the container is passed separately.
+    /// </summary>
+    [Test]
+    public async Task The_muxer_is_told_the_container_rather_than_left_to_read_the_temporary_name()
+    {
+        using var directory = new TempDirectory();
+
+        var handler = Serving(
+            new Dictionary<string, string>
+            {
+                ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n",
+            });
+
+        var muxer = Muxer(available: true);
+
+        string? seenPath = null;
+        string? seenContainer = null;
+
+        muxer.Setup(media => media.MuxAsync(
+                        It.IsAny<Uri>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<CancellationToken>()))
+             .Returns((Uri _, string outputPath, string container, CancellationToken token) =>
+             {
+                 seenPath = outputPath;
+                 seenContainer = container;
+
+                 return File.WriteAllTextAsync(outputPath, "MUXED", token);
+             });
+
+        var downloader = Downloader(handler, SoundCloud(), muxer);
+
+        await downloader.DownloadAsync(
+            Request(directory, TrackWith("aac_256k")),
+            progress: null,
+            CancellationToken.None);
+
+        await Assert.That(seenPath!.EndsWith(".part", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(seenContainer).IsEqualTo(".m4a");
+    }
+
+    [Test]
+    public async Task A_muxer_that_fails_partway_leaves_nothing_behind()
+    {
+        using var directory = new TempDirectory();
+
+        var handler = Serving(
+            new Dictionary<string, string>
+            {
+                ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n",
+            });
+
+        var muxer = Muxer(available: true);
+
+        muxer.Setup(media => media.MuxAsync(
+                        It.IsAny<Uri>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<CancellationToken>()))
+             .Returns((Uri _, string outputPath, string _, CancellationToken _) =>
+             {
+                 // A real muxer can fail after it has already created its output.
+                 File.WriteAllText(outputPath, "half a file");
+
+                 return Task.FromException(new ScdlException("ffmpeg failed", ScdlErrorCode.MuxerFailed));
+             });
+
+        var downloader = Downloader(handler, SoundCloud(), muxer);
+
+        var exception = await Assert.ThrowsAsync<ScdlException>(async () => await downloader.DownloadAsync(
+                            Request(directory, TrackWith("aac_256k")),
+                            progress: null,
+                            CancellationToken.None));
+
+        await Assert.That(exception!.Code).IsEqualTo(ScdlErrorCode.MuxerFailed);
+        await Assert.That(directory.Files.Count).IsEqualTo(0);
     }
 
     [Test]

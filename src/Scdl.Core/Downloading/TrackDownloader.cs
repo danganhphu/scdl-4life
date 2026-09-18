@@ -258,9 +258,24 @@ internal sealed class TrackDownloader(HttpClient http,
             LogFragmentedMp4(logger, playlist.Segments.Count);
 
             var partialPath = destination + PartialSuffix;
-            await muxer.MuxAsync(playlistUri, partialPath, cancellationToken).ConfigureAwait(false);
 
-            File.Move(partialPath, destination, overwrite: true);
+            try
+            {
+                // The container comes from the destination, not from the .part
+                // path: ffmpeg picks its muxer from the extension it is given,
+                // and ".part" is not one it knows.
+                await muxer
+                      .MuxAsync(playlistUri, partialPath, Path.GetExtension(destination), cancellationToken)
+                      .ConfigureAwait(false);
+
+                File.Move(partialPath, destination, overwrite: true);
+            }
+            catch
+            {
+                TryDelete(partialPath);
+
+                throw;
+            }
 
             return new FileInfo(destination).Length;
         }
