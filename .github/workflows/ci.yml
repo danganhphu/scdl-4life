@@ -1,10 +1,20 @@
 name: ci
 
+# Deliberately no paths-ignore. These jobs are required status checks, and a
+# run that a path filter skips reports as "skipped", which GitHub does not
+# count as success - a pull request touching only a readme would never become
+# mergeable. The documented way around that is a second workflow emitting jobs
+# of the same name that do nothing, and that is more moving parts than a three
+# minute build is worth now that a public repo has unmetered Actions minutes.
 on:
   push:
     branches: [main]
+
+  # Fires on open and on every later commit, so a pull request is always checked
+  # at its current head.
   pull_request:
     branches: [main]
+
   workflow_dispatch:
 
 permissions:
