@@ -58,25 +58,17 @@ public static class FileNaming
         return cleaned.Length is 0 ? "untitled" : cleaned;
     }
 
+    /// <summary>
+    /// Builds the file name stem, always <c>{artist} - {title}</c>. Sorting a
+    /// folder by name then groups by artist, and the file still says what it is
+    /// when its tags are stripped.
+    /// </summary>
     public static string BuildStem(Track track)
     {
         ArgumentNullException.ThrowIfNull(track);
 
-        return Sanitize($"{track.DisplayArtist} - {StripAudioExtension(track.DisplayTitle)}");
-    }
-
-    /// <summary>
-    /// Drops a trailing audio extension from a track title. Uploaders routinely
-    /// upload "Some Mix.mp3" and SoundCloud keeps the file name as the title, so
-    /// appending the container extension would otherwise produce "....mp3.mp3".
-    /// </summary>
-    internal static string StripAudioExtension(string title)
-    {
-        var extension = Path.GetExtension(title);
-
-        return extension.Length > 1 && AudioFileExtensions.All.Contains(extension)
-                   ? title[..^extension.Length].TrimEnd()
-                   : title;
+        // DisplayTitle has already dropped any trailing audio extension.
+        return Sanitize($"{track.DisplayArtist} - {track.DisplayTitle}");
     }
 
     /// <summary>

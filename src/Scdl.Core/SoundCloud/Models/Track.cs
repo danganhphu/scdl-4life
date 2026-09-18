@@ -1,4 +1,5 @@
 using System.Globalization;
+using Scdl.Core.Audio;
 
 namespace Scdl.Core.SoundCloud.Models;
 
@@ -72,8 +73,14 @@ public sealed record Track
             _ => "Unknown Artist",
         };
 
+    /// <summary>
+    /// The title as it should be shown and written, with a trailing audio
+    /// extension removed - uploaders routinely leave the ".mp3" of the file they
+    /// uploaded in the title itself. <see cref="Title"/> keeps the raw value.
+    /// </summary>
     [JsonIgnore]
-    public string DisplayTitle => Title is { Length: > 0 } title ? title : $"track-{Id}";
+    public string DisplayTitle
+        => Title is { Length: > 0 } title ? AudioFileExtensions.StripFrom(title) : $"track-{Id}";
 
     [JsonIgnore]
     public TimeSpan Duration => TimeSpan.FromMilliseconds(DurationMs);
