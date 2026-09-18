@@ -35,6 +35,11 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.ref }}
 
+          # MinVer reads the version off the nearest tag, and a shallow clone
+          # has none. Without this the binary in the release would report
+          # 0.0.0-alpha.0 no matter what tag triggered the build.
+          fetch-depth: 0
+
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
@@ -88,13 +93,38 @@ jobs:
 
     # The only job that writes. Kept separate so the build jobs stay read-only.
     permissions:
-      contents: write
+      contents: write # create the release
+      id-token: write # sign the provenance
+      attestations: write # record it
 
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
           merge-multiple: true
+
+      # Written next to the archives so anyone can check that what they
+      # downloaded is what this workflow built.
+      - name: Checksum the archives
+        working-directory: artifacts
+        run: |
+          sha256sum *.zip | tee SHA256SUMS.txt
+
+      # Records in a public transparency log that these exact bytes came out of
+      # this workflow, at this commit, on a GitHub runner. Free for a public
+      # repository.
+      #
+      # This is not code signing and it does not stop the SmartScreen warning -
+      # that needs a certificate somebody has to pay for every year. What it
+      # does give is something a suspicious user can actually check:
+      #
+      #   gh attestation verify scdl-0.1.0-win-x64.zip --repo danganhphu/scdl-4life
+      #
+      # The archive is the subject, not the executable inside it. Verifying an
+      # extracted scdl.exe fails, because those bytes were never attested.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: artifacts/*.zip
 
       # Drafted rather than published: the release notes are worth reading
       # before anyone downloads a binary that claims to know what SoundCloud
@@ -104,4 +134,6 @@ jobs:
           tag_name: ${{ inputs.tag || github.ref_name }}
           draft: true
           generate_release_notes: true
-          files: artifacts/*.zip
+          files: |
+            artifacts/*.zip
+            artifacts/SHA256SUMS.txt

@@ -113,6 +113,28 @@ sides are compile-time constants and the analyzer is right that it proves
 nothing. Pin the value where it is *used* instead, or leave it to the doc
 comment.
 
+## A double hyphen in an XML comment silently voids Directory.Build.props
+
+Writing `-- version` as `--version` inside a comment in `Directory.Build.props`
+produced this, on restore, before a single line of code was compiled:
+
+```
+error NETSDK1207: Ahead-of-time compilation is not supported for the target framework.
+```
+
+XML forbids `--` inside a comment. MSBuild does not report a parse error for it;
+it drops the props file. `TargetFramework` is declared in that file, so the
+project ended up with no target framework at all, and the SDK reported the first
+thing that made no sense without one: AOT.
+
+Nothing in the error names the file, the comment or XML. The first instinct was
+to blame the package added in the same edit, which cost a round of isolating
+MinVer and proving it innocent - removing it changed nothing.
+
+**When a build breaks right after editing a props or targets file, re-read the
+edit as XML before believing the error message.** Bullets inside MSBuild
+comments are asterisks in this repo for exactly this reason.
+
 ## `Uri.TryCreate` disagrees with itself across platforms
 
 `Uri.TryCreate("/artist/track", UriKind.Absolute, out var uri)` returns **false
