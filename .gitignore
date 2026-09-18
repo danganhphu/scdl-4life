@@ -354,3 +354,8 @@ MigrationBackup/
 .ionide/
 
 .containers
+
+## Per-machine agent settings. .claude/settings.json is shared and committed;
+## this one holds whatever must not be, such as a GH_TOKEN for the account that
+## owns this repo.
+.claude/settings.local.json
