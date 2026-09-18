@@ -5,26 +5,36 @@ namespace Scdl.Cli;
 
 internal static class Program
 {
-    private static async Task<int> Main(string[] args)
+    private static readonly InvocationConfiguration Configuration = new()
     {
-        var parseResult = CommandFactory.CreateRoot().Parse(args);
+        // Own the exception path, so a ScdlException prints as the sentence
+        // it already is rather than as a stack trace.
+        EnableDefaultExceptionHandler = false,
 
-        var configuration = new InvocationConfiguration
-        {
-            // Own the exception path, so a ScdlException prints as the sentence
-            // it already is rather than as a stack trace.
-            EnableDefaultExceptionHandler = false,
+        // Gives in flight transfers a moment to unwind on Ctrl+C and drop
+        // their .part files instead of being killed mid write.
+        ProcessTerminationTimeout = TimeSpan.FromSeconds(5),
+    };
 
-            // Gives in flight transfers a moment to unwind on Ctrl+C and drop
-            // their .part files instead of being killed mid write.
-            ProcessTerminationTimeout = TimeSpan.FromSeconds(5),
-        };
+    private static Task<int> Main(string[] args)
+        => RunAsync(CommandFactory.CreateRoot().Parse(args), new ConsoleRenderer(AnsiConsole.Console));
 
-        var renderer = new ConsoleRenderer(AnsiConsole.Console);
+    /// <summary>
+    /// Invokes a parsed command and turns whatever escapes it into an exit code.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <c>Main</c> so the mapping can be exercised against a
+    /// command that throws on purpose. An entry point is not testable, and this
+    /// is the part worth testing: the exit code is what a script reads.
+    /// </remarks>
+    internal static async Task<int> RunAsync(ParseResult parseResult, ConsoleRenderer renderer)
+    {
+        ArgumentNullException.ThrowIfNull(parseResult);
+        ArgumentNullException.ThrowIfNull(renderer);
 
         try
         {
-            return await parseResult.InvokeAsync(configuration);
+            return await parseResult.InvokeAsync(Configuration);
         }
         catch (ScdlException e)
         {
