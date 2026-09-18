@@ -18,6 +18,15 @@ updates:
       prefix-development: chore
       include: scope
 
+    # assignees rather than reviewers: GitHub dropped reviewers from the
+    # configuration reference and points at CODEOWNERS instead, which this repo
+    # already has. An assignee shows up in "Assigned to you" either way.
+    assignees:
+      - danganhphu
+
+    labels:
+      - dependencies
+
     groups:
       microsoft-extensions:
         patterns:
@@ -34,6 +43,8 @@ updates:
         patterns:
           - Spectre.Console*
 
+  # Actions are pinned to a commit SHA. Dependabot understands that form and
+  # updates the SHA together with the version comment beside it.
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -41,3 +52,8 @@ updates:
     commit-message:
       prefix: ci
       include: scope
+    assignees:
+      - danganhphu
+    labels:
+      - dependencies
+      - ci
