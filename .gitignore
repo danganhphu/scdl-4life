@@ -354,3 +354,8 @@ MigrationBackup/
 .ionide/
 
 .containers
+
+## Working notes shared between Phu and the AI agent. Deliberately not tracked:
+## they are scratch context, not documentation the repo owes anyone. Anything in
+## here that becomes a rule for contributors belongs in AGENTS.md instead.
+claude-memory/
