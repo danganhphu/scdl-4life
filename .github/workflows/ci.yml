@@ -24,11 +24,6 @@ jobs:
         os: [windows-latest, ubuntu-latest]
 
     steps:
-      # Actions are pinned to a commit SHA, with the version in the comment. A
-      # tag is a movable pointer: whoever can push to the action's repo can
-      # repoint v7 at different code, and every workflow trusting the tag runs
-      # it on the next build. Dependabot updates the SHA and the comment
-      # together, so the pin costs nothing to maintain.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
