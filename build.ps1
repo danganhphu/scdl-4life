@@ -70,6 +70,13 @@ function Assert-ExitCode([string]$What)
 #>
 function Find-VcEnvironmentCommand([string]$TargetRuntime)
 {
+    # Linux and macOS link Native AOT with clang and never look for vswhere, and
+    # ${env:ProgramFiles(x86)} is null there - Join-Path would throw on it.
+    if (-not $IsWindows)
+    {
+        return $null
+    }
+
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 
     if (-not (Test-Path $vswhere))
@@ -214,23 +221,23 @@ function Invoke-Publish
     # inline, and especially one inside a string, is the construct every
     # formatter explodes across half a screen; this shape cannot be made worse.
     $useAot = -not $NoAot
-    $vcEnvironment = $null
 
-    if ($useAot)
+    # Only Windows needs an environment imported before the link step. Elsewhere
+    # the SDK drives clang directly, so AOT is attempted as-is.
+    if ($useAot -and $IsWindows)
     {
         $vcEnvironment = Find-VcEnvironmentCommand -TargetRuntime $Runtime
-    }
 
-    if ($useAot -and -not $vcEnvironment)
-    {
-        Write-Warning 'No MSVC toolchain found; falling back to a trimmed self-contained publish.'
-        Write-Warning 'Install the "Desktop development with C++" workload to get a Native AOT binary.'
-        $useAot = $false
-    }
-
-    if ($useAot)
-    {
-        Import-VcEnvironment -Command $vcEnvironment
+        if ($vcEnvironment)
+        {
+            Import-VcEnvironment -Command $vcEnvironment
+        }
+        else
+        {
+            Write-Warning 'No MSVC toolchain found; falling back to a trimmed self-contained publish.'
+            Write-Warning 'Install the "Desktop development with C++" workload to get a Native AOT binary.'
+            $useAot = $false
+        }
     }
 
     $outputFolder = 'trimmed'
@@ -261,7 +268,9 @@ function Invoke-Publish
     dotnet @arguments
     Assert-ExitCode 'Publish'
 
-    $binary = Get-ChildItem -Path $output -Filter 'scdl.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+    # No extension on Linux and macOS, so both names are looked for.
+    $binary = Get-ChildItem -Path $output -Include 'scdl', 'scdl.exe' -Recurse -ErrorAction SilentlyContinue |
+        Select-Object -First 1
 
     if ($binary)
     {
