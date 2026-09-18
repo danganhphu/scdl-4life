@@ -30,13 +30,27 @@ public sealed class UrlArgumentTests
 
     [Test]
     [Arguments("soundcloud.com/artist/track")]
-    [Arguments("/artist/track")]
     [Arguments("not a url at all")]
     public async Task A_relative_url_is_rejected_as_not_absolute(string url)
     {
         var result = Parse("get", url);
 
         await Assert.That(AnyErrorContains(result, "absolute")).IsTrue();
+    }
+
+    /// <summary>
+    /// A leading slash is a relative URL on Windows and an absolute path on
+    /// Unix, where <see cref="Uri.TryCreate(string, UriKind, out Uri)"/> parses
+    /// it as <c>file:///artist/track</c>. Both platforms refuse it, but for
+    /// different reasons, so only the refusal is pinned - asserting the message
+    /// here passed on Windows and failed the Linux leg of CI.
+    /// </summary>
+    [Test]
+    public async Task A_rooted_path_is_rejected_on_every_platform()
+    {
+        var result = Parse("get", "/artist/track");
+
+        await Assert.That(result.Errors.Count).IsGreaterThan(0);
     }
 
     /// <summary>

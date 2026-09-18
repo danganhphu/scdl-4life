@@ -113,6 +113,22 @@ sides are compile-time constants and the analyzer is right that it proves
 nothing. Pin the value where it is *used* instead, or leave it to the doc
 comment.
 
+## `Uri.TryCreate` disagrees with itself across platforms
+
+`Uri.TryCreate("/artist/track", UriKind.Absolute, out var uri)` returns **false
+on Windows and true on Unix**, where a leading slash is an absolute path and
+.NET parses it as `file:///artist/track`.
+
+Both platforms still reject the input as a SoundCloud URL, but by different
+routes: Windows fails the absolute check, Linux passes it and then fails the
+http/https scheme check. A test that asserted the *message* passed locally and
+failed only the ubuntu leg of CI.
+
+The lesson is not about `Uri`. It is that **a green Windows run says nothing
+about the Linux matrix leg**, and the CI matrix is the only thing that catches
+it. Anything that touches paths, path separators or file URIs needs the message
+assertion loosened to the behaviour that is actually platform independent.
+
 ## `.gitattributes` and `.editorconfig` must agree on line endings
 
 Setting `end_of_line = lf` in `.editorconfig` while `.gitattributes` leaves a
