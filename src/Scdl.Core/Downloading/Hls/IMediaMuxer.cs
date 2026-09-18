@@ -9,5 +9,18 @@ internal interface IMediaMuxer
 {
     bool IsAvailable { get; }
 
-    Task MuxAsync(Uri playlistUri, string outputPath, CancellationToken cancellationToken);
+    /// <summary>Reassembles a playlist into a single file.</summary>
+    /// <param name="playlistUri">The media playlist to read.</param>
+    /// <param name="outputPath">Where to write, typically a temporary name.</param>
+    /// <param name="containerExtension">
+    /// The extension of the file that will finally exist, such as <c>.m4a</c>.
+    /// Passed separately because <paramref name="outputPath"/> is a temporary
+    /// name whose own extension says nothing about the container, and a muxer
+    /// that guesses from the path gets it wrong.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the muxing process.</param>
+    Task MuxAsync(Uri playlistUri,
+                  string outputPath,
+                  string containerExtension,
+                  CancellationToken cancellationToken);
 }

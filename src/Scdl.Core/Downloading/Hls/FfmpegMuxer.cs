@@ -1,4 +1,6 @@
+using System.Collections.Frozen;
 using System.Diagnostics;
+using Scdl.Core.Audio;
 using Scdl.Core.Results;
 using static Scdl.Core.Downloading.Hls.FfmpegMuxerLoggers;
 
@@ -24,6 +26,25 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
 
     /// <summary>faststart is an MP4 muxer option; other muxers reject it outright.</summary>
     private static readonly string[] Mp4Arguments = ["-movflags", "+faststart"];
+
+    /// <summary>
+    /// ffmpeg's name for the muxer behind each container this tool writes.
+    /// </summary>
+    /// <remarks>
+    /// Named explicitly with <c>-f</c> rather than left to ffmpeg, which infers
+    /// the muxer from the output file's extension. The output here is a
+    /// <c>.part</c> file, so inference produced
+    /// <em>"Unable to choose an output format"</em> and no file at all.
+    /// <c>ipod</c> is the muxer for audio-only MP4, which is what <c>.m4a</c> is.
+    /// </remarks>
+    private static readonly FrozenDictionary<string, string> FormatByContainer =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [AudioFileExtensions.M4a] = "ipod",
+            [AudioFileExtensions.Mp4] = "mp4",
+            [AudioFileExtensions.Mp3] = "mp3",
+            [AudioFileExtensions.Ogg] = "ogg",
+        }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public bool IsAvailable => Locate() is not null;
 
@@ -55,10 +76,14 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
 
     /// <summary>Stream copies the playlist into <paramref name="outputPath"/> without re-encoding.</summary>
     /// <exception cref="ScdlException">ffmpeg is not on PATH, could not start, or exited non-zero.</exception>
-    public async Task MuxAsync(Uri playlistUri, string outputPath, CancellationToken cancellationToken)
+    public async Task MuxAsync(Uri playlistUri,
+                               string outputPath,
+                               string containerExtension,
+                               CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(playlistUri);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(containerExtension);
 
         var ffmpeg = Locate() ??
                      throw new ScdlException(
@@ -81,7 +106,17 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
         startInfo.ArgumentList.Add("-c");
         startInfo.ArgumentList.Add("copy");
 
-        if (Path.GetExtension(outputPath) is ".m4a" or ".mp4")
+        // Both of these key off the container the caller asked for, never off
+        // the output path. The path is a .part file, and an extension ffmpeg
+        // does not recognise makes it refuse to open the output at all.
+        if (FormatByContainer.TryGetValue(containerExtension, out var format))
+        {
+            startInfo.ArgumentList.Add("-f");
+            startInfo.ArgumentList.Add(format);
+        }
+
+        if (containerExtension.Equals(AudioFileExtensions.M4a, StringComparison.OrdinalIgnoreCase) ||
+            containerExtension.Equals(AudioFileExtensions.Mp4, StringComparison.OrdinalIgnoreCase))
         {
             foreach (var argument in Mp4Arguments)
             {
