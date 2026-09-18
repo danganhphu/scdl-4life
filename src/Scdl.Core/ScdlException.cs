@@ -15,19 +15,22 @@ namespace Scdl.Core;
 /// </remarks>
 public sealed class ScdlException : Exception
 {
-    public ScdlException() => Code = ScdlErrorCode.Unspecified;
+    public ScdlException()
+        => Code = ScdlErrorCode.Unspecified;
 
     public ScdlException(string message)
         : this(message, ScdlErrorCode.Unspecified) { }
 
     public ScdlException(string message, ScdlErrorCode code)
-        : base(message) => Code = code;
+        : base(message)
+        => Code = code;
 
     public ScdlException(string message, Exception innerException)
         : this(message, ScdlErrorCode.Unspecified, innerException) { }
 
     public ScdlException(string message, ScdlErrorCode code, Exception innerException)
-        : base(message, innerException) => Code = code;
+        : base(message, innerException)
+        => Code = code;
 
     /// <summary>What went wrong, in the form <see cref="ScdlExitCode.For"/> understands.</summary>
     public ScdlErrorCode Code { get; }

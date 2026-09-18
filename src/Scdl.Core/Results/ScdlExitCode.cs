@@ -35,36 +35,37 @@ public static class ScdlExitCode
     public const int Cancelled = 130;
 
     /// <summary>Maps a failure onto the exit code the process should return.</summary>
-    public static int For(ScdlErrorCode code) => code switch
-    {
-        ScdlErrorCode.UnsupportedResource or
-            ScdlErrorCode.PresetNotOffered => Usage,
+    public static int For(ScdlErrorCode code)
+        => code switch
+        {
+            ScdlErrorCode.UnsupportedResource or
+                ScdlErrorCode.PresetNotOffered => Usage,
 
-        ScdlErrorCode.NotFound or
-            ScdlErrorCode.NoPlayableStream or
-            ScdlErrorCode.NoRungDownloadable or
-            ScdlErrorCode.RungNotServed or
-            ScdlErrorCode.RungHasNoEndpoint or
-            ScdlErrorCode.StreamUrlUnusable => Unavailable,
+            ScdlErrorCode.NotFound or
+                ScdlErrorCode.NoPlayableStream or
+                ScdlErrorCode.NoRungDownloadable or
+                ScdlErrorCode.RungNotServed or
+                ScdlErrorCode.RungHasNoEndpoint or
+                ScdlErrorCode.StreamUrlUnusable => Unavailable,
 
-        ScdlErrorCode.Unauthorized => Unauthorized,
+            ScdlErrorCode.Unauthorized => Unauthorized,
 
-        ScdlErrorCode.MuxerUnavailable => MissingDependency,
+            ScdlErrorCode.MuxerUnavailable => MissingDependency,
 
-        // Everything else is a genuine fault: an unreadable payload, a muxer
-        // that ran and failed, an encrypted or malformed playlist, a client_id
-        // that could not be scraped. None of them tell a script anything more
-        // useful than "this did not work".
-        ScdlErrorCode.None or
-            ScdlErrorCode.Unspecified or
-            ScdlErrorCode.UnreadablePayload or
-            ScdlErrorCode.UnsupportedProtocol or
-            ScdlErrorCode.MuxerFailed or
-            ScdlErrorCode.EncryptedPlaylist or
-            ScdlErrorCode.MasterPlaylistUnexpected or
-            ScdlErrorCode.PlaylistHasNoSegments or
-            ScdlErrorCode.ClientIdUnavailable => Failure,
+            // Everything else is a genuine fault: an unreadable payload, a muxer
+            // that ran and failed, an encrypted or malformed playlist, a client_id
+            // that could not be scraped. None of them tell a script anything more
+            // useful than "this did not work".
+            ScdlErrorCode.None or
+                ScdlErrorCode.Unspecified or
+                ScdlErrorCode.UnreadablePayload or
+                ScdlErrorCode.UnsupportedProtocol or
+                ScdlErrorCode.MuxerFailed or
+                ScdlErrorCode.EncryptedPlaylist or
+                ScdlErrorCode.MasterPlaylistUnexpected or
+                ScdlErrorCode.PlaylistHasNoSegments or
+                ScdlErrorCode.ClientIdUnavailable => Failure,
 
-        _ => Failure,
-    };
+            _ => Failure,
+        };
 }
