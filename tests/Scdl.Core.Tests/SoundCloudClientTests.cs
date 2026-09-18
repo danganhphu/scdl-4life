@@ -27,11 +27,11 @@ public sealed class SoundCloudClientTests
         return mock;
     }
 
-    private static SoundCloudClient CreateClient(
-        StubHttpMessageHandler handler,
-        IClientIdProvider clientIds,
-        SoundCloudOptions? options = null) =>
-        new(handler.CreateClient(),
+    private static SoundCloudClient CreateClient(StubHttpMessageHandler handler,
+                                                 IClientIdProvider clientIds,
+                                                 SoundCloudOptions? options = null)
+        => new(
+            handler.CreateClient(),
             clientIds,
             Options.Create(options ?? new SoundCloudOptions()),
             NullLogger<SoundCloudClient>.Instance);
@@ -39,21 +39,21 @@ public sealed class SoundCloudClientTests
     [Test]
     public async Task ResolveAsync_returns_a_single_track()
     {
-        const string Json = """
-            {
-              "kind": "track",
-              "id": 12345,
-              "title": "Song",
-              "user": { "username": "artist" },
-              "media": { "transcodings": [
-                { "url": "https://api-v2.soundcloud.com/media/1/x/stream/hls",
-                  "preset": "mp3_1_0",
-                  "format": { "protocol": "hls", "mime_type": "audio/mpeg" } }
-              ] }
-            }
-            """;
+        const string json = """
+                            {
+                              "kind": "track",
+                              "id": 12345,
+                              "title": "Song",
+                              "user": { "username": "artist" },
+                              "media": { "transcodings": [
+                                { "url": "https://api-v2.soundcloud.com/media/1/x/stream/hls",
+                                  "preset": "mp3_1_0",
+                                  "format": { "protocol": "hls", "mime_type": "audio/mpeg" } }
+                              ] }
+                            }
+                            """;
 
-        var handler = StubHttpMessageHandler.ReturningJson(Json);
+        var handler = StubHttpMessageHandler.ReturningJson(json);
         var client = CreateClient(handler, ClientIdProvider().Object);
 
         var tracks = await client.ResolveAsync(TrackUrl, CancellationToken.None);
@@ -80,8 +80,9 @@ public sealed class SoundCloudClientTests
         var handler = StubHttpMessageHandler.ReturningJson("""{"kind":"user","id":1}""");
         var client = CreateClient(handler, ClientIdProvider().Object);
 
-        var exception = await Assert.ThrowsAsync<ScdlException>(
-            async () => await client.ResolveAsync(TrackUrl, CancellationToken.None));
+        var exception =
+            await Assert.ThrowsAsync<ScdlException>(async ()
+                => await client.ResolveAsync(TrackUrl, CancellationToken.None));
 
         await Assert.That(exception).IsNotNull();
         await Assert.That(exception!.Message.Contains("user profile", StringComparison.Ordinal)).IsTrue();
@@ -95,30 +96,30 @@ public sealed class SoundCloudClientTests
     [Test]
     public async Task ResolveAsync_hydrates_playlist_stubs_and_keeps_playlist_order()
     {
-        const string PlaylistJson = """
-            {
-              "kind": "playlist",
-              "id": 7,
-              "title": "Set",
-              "tracks": [ { "id": 101 }, { "id": 102 } ]
-            }
-            """;
+        const string playlistJson = """
+                                    {
+                                      "kind": "playlist",
+                                      "id": 7,
+                                      "title": "Set",
+                                      "tracks": [ { "id": 101 }, { "id": 102 } ]
+                                    }
+                                    """;
 
         // Deliberately returned out of order to prove the client re-sorts.
-        const string TracksJson = """
-            [
-              { "id": 102, "title": "Second",
-                "media": { "transcodings": [ { "url": "https://x/2", "preset": "mp3_1_0",
-                  "format": { "protocol": "hls", "mime_type": "audio/mpeg" } } ] } },
-              { "id": 101, "title": "First",
-                "media": { "transcodings": [ { "url": "https://x/1", "preset": "mp3_1_0",
-                  "format": { "protocol": "hls", "mime_type": "audio/mpeg" } } ] } }
-            ]
-            """;
+        const string tracksJson = """
+                                  [
+                                    { "id": 102, "title": "Second",
+                                      "media": { "transcodings": [ { "url": "https://x/2", "preset": "mp3_1_0",
+                                        "format": { "protocol": "hls", "mime_type": "audio/mpeg" } } ] } },
+                                    { "id": 101, "title": "First",
+                                      "media": { "transcodings": [ { "url": "https://x/1", "preset": "mp3_1_0",
+                                        "format": { "protocol": "hls", "mime_type": "audio/mpeg" } } ] } }
+                                  ]
+                                  """;
 
         var handler = StubHttpMessageHandler.Routing(
-            ("/resolve", PlaylistJson),
-            ("/tracks?ids=", TracksJson));
+            ("/resolve", playlistJson),
+            ("/tracks?ids=", tracksJson));
 
         var client = CreateClient(handler, ClientIdProvider().Object);
 
@@ -138,8 +139,7 @@ public sealed class SoundCloudClientTests
         var track = new Track { Id = 1, TrackAuthorization = "sig-abc" };
         var transcoding = new Transcoding
         {
-            Url = "https://api-v2.soundcloud.com/media/1/x/stream/hls",
-            Preset = "mp3_1_0",
+            Url = "https://api-v2.soundcloud.com/media/1/x/stream/hls", Preset = "mp3_1_0",
         };
 
         var result = await client.GetStreamUriAsync(track, transcoding, CancellationToken.None);
@@ -147,7 +147,7 @@ public sealed class SoundCloudClientTests
         await Assert.That(result.TryGetValue(out var uri)).IsTrue();
         await Assert.That(uri!.AbsoluteUri).IsEqualTo("https://cdn.invalid/playlist.m3u8");
         await Assert.That(handler.Requests[0].Query.Contains("track_authorization=sig-abc", StringComparison.Ordinal))
-            .IsTrue();
+                    .IsTrue();
     }
 
     /// <summary>
@@ -163,14 +163,13 @@ public sealed class SoundCloudClientTests
 
         var transcoding = new Transcoding
         {
-            Url = "https://api-v2.soundcloud.com/media/1/x/stream/hls",
-            Preset = "abr_sq",
+            Url = "https://api-v2.soundcloud.com/media/1/x/stream/hls", Preset = "abr_sq",
         };
 
         var result = await client.GetStreamUriAsync(new Track { Id = 1 }, transcoding, CancellationToken.None);
 
         await Assert.That(result.IsFailure).IsTrue();
-        await Assert.That(result.Error.Code).IsEqualTo("soundcloud.rung_not_served");
+        await Assert.That(result.Error.Code).IsEqualTo(SoundCloudErrorCodes.RungNotServed);
         await Assert.That(result.Error.Message.Contains("abr_sq", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -181,12 +180,12 @@ public sealed class SoundCloudClientTests
         var client = CreateClient(handler, ClientIdProvider().Object);
 
         var result = await client.GetStreamUriAsync(
-            new Track { Id = 1 },
-            new Transcoding { Url = null, Preset = "mp3_1_0" },
-            CancellationToken.None);
+                         new Track { Id = 1 },
+                         new Transcoding { Url = null, Preset = "mp3_1_0" },
+                         CancellationToken.None);
 
         await Assert.That(result.IsFailure).IsTrue();
-        await Assert.That(result.Error.Code).IsEqualTo("soundcloud.rung_has_no_endpoint");
+        await Assert.That(result.Error.Code).IsEqualTo(SoundCloudErrorCodes.RungHasNoEndpoint);
         await Assert.That(handler.Requests.Count).IsEqualTo(0);
     }
 
@@ -201,8 +200,8 @@ public sealed class SoundCloudClientTests
         var client = CreateClient(handler, ClientIdProvider().Object);
 
         var uri = await client.TryGetOriginalUriAsync(
-            new Track { Id = 1, Downloadable = false },
-            CancellationToken.None);
+                      new Track { Id = 1, Downloadable = false },
+                      CancellationToken.None);
 
         await Assert.That(uri).IsNull();
         await Assert.That(handler.Requests.Count).IsEqualTo(0);
@@ -211,14 +210,13 @@ public sealed class SoundCloudClientTests
     [Test]
     public async Task TryGetOriginalUriAsync_returns_the_redirect_for_a_downloadable_track()
     {
-        var handler = StubHttpMessageHandler.ReturningJson(
-            """{"redirectUri":"https://cdn.invalid/original.wav"}""");
+        var handler = StubHttpMessageHandler.ReturningJson("""{"redirectUri":"https://cdn.invalid/original.wav"}""");
 
         var client = CreateClient(handler, ClientIdProvider().Object);
 
         var uri = await client.TryGetOriginalUriAsync(
-            new Track { Id = 1, Downloadable = true, HasDownloadsLeft = true },
-            CancellationToken.None);
+                      new Track { Id = 1, Downloadable = true, HasDownloadsLeft = true },
+                      CancellationToken.None);
 
         await Assert.That(uri!.AbsoluteUri).IsEqualTo("https://cdn.invalid/original.wav");
     }

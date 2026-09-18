@@ -19,7 +19,17 @@ public static class FileNaming
 
     private static readonly FrozenSet<string> AudioExtensions = new[]
     {
-        ".mp3", ".m4a", ".mp4", ".aac", ".wav", ".flac", ".ogg", ".opus", ".aiff", ".aif", ".wma",
+        ".mp3",
+        ".m4a",
+        ".mp4",
+        ".aac",
+        ".wav",
+        ".flac",
+        ".ogg",
+        ".opus",
+        ".aiff",
+        ".aif",
+        ".wma",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Collapses anything unsafe into single spaces and trims to a sane length.</summary>
@@ -80,8 +90,8 @@ public static class FileNaming
         var extension = Path.GetExtension(title);
 
         return extension.Length > 1 && AudioExtensions.Contains(extension)
-            ? title[..^extension.Length].TrimEnd()
-            : title;
+                   ? title[..^extension.Length].TrimEnd()
+                   : title;
     }
 
     /// <summary>

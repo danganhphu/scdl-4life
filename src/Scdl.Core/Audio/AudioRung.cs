@@ -9,12 +9,11 @@ namespace Scdl.Core.Audio;
 /// <param name="Codec">Codec the rung decodes to.</param>
 /// <param name="FileExtension">Container extension that holds this codec without transcoding.</param>
 /// <param name="RequiresGoPlus">True when only a Go+ token unlocks the rung.</param>
-public readonly record struct AudioRung(
-    string Preset,
-    int Kbps,
-    AudioCodec Codec,
-    string FileExtension,
-    bool RequiresGoPlus)
+public readonly record struct AudioRung(string Preset,
+                                        int Kbps,
+                                        AudioCodec Codec,
+                                        string FileExtension,
+                                        bool RequiresGoPlus)
 {
     /// <summary>True when SoundCloud named a preset this build has never heard of.</summary>
     public bool IsUnknown => Kbps is 0;

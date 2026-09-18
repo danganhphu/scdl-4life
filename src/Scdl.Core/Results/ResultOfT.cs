@@ -47,9 +47,11 @@ public readonly record struct Result<T>
     /// <summary>Meaningful only when <see cref="IsFailure"/>.</summary>
     public ScdlError Error { get; }
 
-    public static implicit operator Result<T>(T value) => new(value);
+    public static implicit operator Result<T>(T value)
+        => new(value);
 
-    public static implicit operator Result<T>(ScdlError error) => new(error);
+    public static implicit operator Result<T>(ScdlError error)
+        => new(error);
 
     /// <summary>
     /// Reads the value. Preferred over a <c>Value</c> property because the
@@ -72,5 +74,6 @@ public readonly record struct Result<T>
         return IsSuccess ? onSuccess(_value!) : onFailure(Error);
     }
 
-    public override string ToString() => IsSuccess ? $"Success({_value})" : $"Failure({Error.Code})";
+    public override string ToString()
+        => IsSuccess ? $"Success({_value})" : $"Failure({Error.Code})";
 }

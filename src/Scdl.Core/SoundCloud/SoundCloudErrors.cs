@@ -15,14 +15,18 @@ internal static class SoundCloudErrors
     /// <c>aac_160k</c> sibling resolves fine, so it is routine rather than
     /// exceptional: the caller should step down to the next rung.
     /// </summary>
-    internal static ScdlError RungNotServed(string preset, int statusCode) =>
-        new("soundcloud.rung_not_served", $"SoundCloud advertises {preset} but will not serve it (HTTP {statusCode}).");
+    internal static ScdlError RungNotServed(string preset, int statusCode)
+        => new(
+            SoundCloudErrorCodes.RungNotServed,
+            $"SoundCloud advertises {preset} but will not serve it (HTTP {statusCode}).");
 
     /// <summary>The transcoding entry carried no endpoint at all.</summary>
-    internal static ScdlError RungHasNoEndpoint(string preset) =>
-        new("soundcloud.rung_has_no_endpoint", $"Rung {preset} has no stream endpoint.");
+    internal static ScdlError RungHasNoEndpoint(string preset)
+        => new(SoundCloudErrorCodes.RungHasNoEndpoint, $"Rung {preset} has no stream endpoint.");
 
     /// <summary>A 200 that did not contain a usable URL.</summary>
-    internal static ScdlError StreamUrlUnusable(string preset) =>
-        new("soundcloud.stream_url_unusable", $"SoundCloud returned no usable stream URL for {preset}.");
+    internal static ScdlError StreamUrlUnusable(string preset)
+        => new(
+            SoundCloudErrorCodes.StreamUrlUnusable,
+            $"SoundCloud returned no usable stream URL for {preset}.");
 }

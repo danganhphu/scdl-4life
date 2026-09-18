@@ -25,9 +25,9 @@ public static class TrackStreams
             .. track.Media.Transcodings
                     .Where(transcoding => !string.IsNullOrWhiteSpace(transcoding.Url))
                     .Select(transcoding => new StreamOption(
-                                transcoding,
-                                TranscodingCatalog.Classify(transcoding.Preset, transcoding.Format?.MimeType),
-                                TranscodingCatalog.ParseProtocol(transcoding.Format?.Protocol)))
+                        transcoding,
+                        TranscodingCatalog.Classify(transcoding.Preset, transcoding.Format?.MimeType),
+                        TranscodingCatalog.ParseProtocol(transcoding.Format?.Protocol)))
                     .OrderBy(option => option.Transcoding.Snipped)
                     .ThenByDescending(option => option.Rung.Kbps)
                     .ThenBy(option => option.Rung.Preset, StringComparer.Ordinal),

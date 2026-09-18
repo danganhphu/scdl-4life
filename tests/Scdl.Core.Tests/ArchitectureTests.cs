@@ -11,8 +11,7 @@ public sealed class ArchitectureTests
 {
     private static readonly Assembly CoreAssembly = typeof(ICoreAssemblyMarker).Assembly;
 
-    private static IEnumerable<Type> PublicTypes
-        => CoreAssembly.GetExportedTypes().Where(type => !type.IsNested);
+    private static IEnumerable<Type> PublicTypes => CoreAssembly.GetExportedTypes().Where(type => !type.IsNested);
 
     [Test]
     public async Task Every_public_type_lives_under_the_root_namespace()
@@ -45,7 +44,8 @@ public sealed class ArchitectureTests
 
                 leaks |= method.GetParameters()
                                .Any(parameter => parameter.ParameterType.Namespace?
-                                                          .StartsWith("ATL", StringComparison.Ordinal) ?? false);
+                                                     .StartsWith("ATL", StringComparison.Ordinal) ??
+                                                 false);
 
                 await Assert.That(leaks).IsFalse();
             }

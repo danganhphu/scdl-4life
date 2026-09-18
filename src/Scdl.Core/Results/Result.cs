@@ -11,9 +11,12 @@ namespace Scdl.Core.Results;
 /// </remarks>
 public static class Result
 {
-    public static Result<T> Success<T>(T value) => new(value);
+    public static Result<T> Success<T>(T value)
+        => new(value);
 
-    public static Result<T> Failure<T>(ScdlError error) => new(error);
+    public static Result<T> Failure<T>(ScdlError error)
+        => new(error);
 
-    public static Result<T> Failure<T>(string code, string message) => new(new ScdlError(code, message));
+    public static Result<T> Failure<T>(string code, string message)
+        => new(new ScdlError(code, message));
 }

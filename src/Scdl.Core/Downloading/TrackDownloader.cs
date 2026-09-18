@@ -7,22 +7,20 @@ using static Scdl.Core.Downloading.TrackDownloaderLoggers;
 namespace Scdl.Core.Downloading;
 
 /// <summary>Picks the best available source for a track and streams it to disk.</summary>
-internal sealed class TrackDownloader(
-    HttpClient http,
-    ISoundCloudClient soundCloud,
-    IMediaMuxer muxer,
-    IOptions<SoundCloudOptions> options,
-    ILogger<TrackDownloader> logger) : ITrackDownloader
+internal sealed class TrackDownloader(HttpClient http,
+                                      ISoundCloudClient soundCloud,
+                                      IMediaMuxer muxer,
+                                      IOptions<SoundCloudOptions> options,
+                                      ILogger<TrackDownloader> logger) : ITrackDownloader
 {
     private const int CopyBufferSize = 128 * 1024;
     private const string PartialSuffix = ".part";
 
     private readonly SoundCloudOptions _options = options.Value;
 
-    public async Task<DownloadResult> DownloadAsync(
-        DownloadRequest request,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    public async Task<DownloadResult> DownloadAsync(DownloadRequest request,
+                                                    IProgress<TransferProgress>? progress,
+                                                    CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -44,23 +42,22 @@ internal sealed class TrackDownloader(
         }
 
         return await DownloadTranscodingAsync(
-                         request,
-                         stem,
-                         fellBackFromOriginal: request.Prefer is SourcePreference.Original,
-                         progress,
-                         cancellationToken)
-                     .ConfigureAwait(false);
+                       request,
+                       stem,
+                       fellBackFromOriginal: request.Prefer is SourcePreference.Original,
+                       progress,
+                       cancellationToken)
+                   .ConfigureAwait(false);
     }
 
     /// <summary>
     /// The only route to genuinely lossless audio, and only when the uploader
     /// enabled downloads. Returns null when that route is closed.
     /// </summary>
-    private async Task<DownloadResult?> TryDownloadOriginalAsync(
-        DownloadRequest request,
-        string stem,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    private async Task<DownloadResult?> TryDownloadOriginalAsync(DownloadRequest request,
+                                                                 string stem,
+                                                                 IProgress<TransferProgress>? progress,
+                                                                 CancellationToken cancellationToken)
     {
         var originalUri = await soundCloud
                                 .TryGetOriginalUriAsync(request.Track, cancellationToken)
@@ -81,22 +78,16 @@ internal sealed class TrackDownloader(
         // is whatever the uploader submitted: wav, flac, aiff or mp3.
         var destination = ResolveDestination(request, stem, FileNaming.ExtensionFor(response));
         var bytes = await WriteResponseAsync(response, destination, progress, cancellationToken)
-                          .ConfigureAwait(false);
+                        .ConfigureAwait(false);
 
-        return new DownloadResult
-        {
-            FilePath = destination,
-            Source = DownloadSource.OriginalMaster,
-            Bytes = bytes,
-        };
+        return new() { FilePath = destination, Source = DownloadSource.OriginalMaster, Bytes = bytes, };
     }
 
-    private async Task<DownloadResult> DownloadTranscodingAsync(
-        DownloadRequest request,
-        string stem,
-        bool fellBackFromOriginal,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    private async Task<DownloadResult> DownloadTranscodingAsync(DownloadRequest request,
+                                                                string stem,
+                                                                bool fellBackFromOriginal,
+                                                                IProgress<TransferProgress>? progress,
+                                                                CancellationToken cancellationToken)
     {
         var candidates = SelectCandidates(request.Track, request.Preset);
         var attempts = new List<string>(candidates.Count);
@@ -132,37 +123,39 @@ internal sealed class TrackDownloader(
                     await TryDownloadHlsAsync(uri, destination, progress, cancellationToken)
                         .ConfigureAwait(false),
 
-                _ => throw new ScdlException(
-                         $"Unsupported delivery protocol '{option.Transcoding.Format?.Protocol ?? "unknown"}'."),
+                // Unknown means SoundCloud sent a protocol string this build does
+                // not recognise. Named rather than left to the discard so that
+                // adding a protocol to the enum and forgetting it here shows up
+                // as a visible omission.
+                DeliveryProtocol.Unknown or _ => throw new ScdlException(
+                                                     $"Unsupported delivery protocol '{option.Transcoding.Format?.Protocol ?? "unknown"}'."),
             };
 
-            if (bytes is null)
+            if (bytes is not null)
             {
-                // Fragmented MP4 with no muxer installed. Step down the ladder
-                // rather than failing outright, but say so at Warning level: the
-                // file that lands is a lower rung than the one ranked first, and
-                // quietly handing over worse audio is exactly what this tool
-                // exists not to do.
-                LogSteppedDownForMuxer(logger, option.Rung.Preset, option.Rung.Kbps);
-                attempts.Add($"{option.Rung.Preset} needs a muxer");
-
-                continue;
+                return new()
+                {
+                    FilePath = destination,
+                    Source = DownloadSource.Transcoding,
+                    Bytes = bytes.Value,
+                    Rung = option.Rung,
+                    IsPreview = option.Transcoding.Snipped,
+                    FellBackFromOriginal = fellBackFromOriginal,
+                };
             }
 
-            return new DownloadResult
-            {
-                FilePath = destination,
-                Source = DownloadSource.Transcoding,
-                Bytes = bytes.Value,
-                Rung = option.Rung,
-                IsPreview = option.Transcoding.Snipped,
-                FellBackFromOriginal = fellBackFromOriginal,
-            };
+            // Fragmented MP4 with no muxer installed. Step down the ladder
+            // rather than failing outright, but say so at Warning level: the
+            // file that lands is a lower rung than the one ranked first, and
+            // quietly handing over worse audio is exactly what this tool
+            // exists not to do.
+            LogSteppedDownForMuxer(logger, option.Rung.Preset, option.Rung.Kbps);
+            attempts.Add($"{option.Rung.Preset} needs a muxer");
         }
 
         throw new ScdlException(
-            $"No rung could be downloaded. Tried: {string.Join("; ", attempts)}. "
-            + "If every rung needs a muxer, install ffmpeg: winget install Gyan.FFmpeg");
+            $"No rung could be downloaded. Tried: {string.Join("; ", attempts)}. " +
+            "If every rung needs a muxer, install ffmpeg: winget install Gyan.FFmpeg");
     }
 
     /// <summary>
@@ -197,11 +190,10 @@ internal sealed class TrackDownloader(
         throw new ScdlException($"Preset '{preset}' is not offered for this track. Available: {available}");
     }
 
-    private async Task<long> DownloadProgressiveAsync(
-        Uri streamUri,
-        string destination,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    private async Task<long> DownloadProgressiveAsync(Uri streamUri,
+                                                      string destination,
+                                                      IProgress<TransferProgress>? progress,
+                                                      CancellationToken cancellationToken)
     {
         using var response = await http
                                    .GetAsync(streamUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
@@ -227,11 +219,10 @@ internal sealed class TrackDownloader(
     /// playlist is encrypted, or it listed no segments at all. None of the three
     /// is recoverable here, and each says something different about why.
     /// </exception>
-    private async Task<long?> TryDownloadHlsAsync(
-        Uri playlistUri,
-        string destination,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    private async Task<long?> TryDownloadHlsAsync(Uri playlistUri,
+                                                  string destination,
+                                                  IProgress<TransferProgress>? progress,
+                                                  CancellationToken cancellationToken)
     {
         var content = await http.GetStringAsync(playlistUri, cancellationToken).ConfigureAwait(false);
         var playlist = HlsPlaylist.Parse(content, playlistUri);
@@ -269,25 +260,24 @@ internal sealed class TrackDownloader(
         }
 
         return await ConcatenateSegmentsAsync(playlist.Segments, destination, progress, cancellationToken)
-                     .ConfigureAwait(false);
+                   .ConfigureAwait(false);
     }
 
     /// <summary>
     /// Downloads segments in bounded parallel windows but writes them strictly
     /// in playlist order, because concatenated audio is order sensitive.
     /// </summary>
-    private async Task<long> ConcatenateSegmentsAsync(
-        IReadOnlyList<Uri> segments,
-        string destination,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    private async Task<long> ConcatenateSegmentsAsync(IReadOnlyList<Uri> segments,
+                                                      string destination,
+                                                      IProgress<TransferProgress>? progress,
+                                                      CancellationToken cancellationToken)
     {
         var partialPath = destination + PartialSuffix;
 
         try
         {
             var written = await FetchSegmentsAsync(segments, partialPath, progress, cancellationToken)
-                                .ConfigureAwait(false);
+                              .ConfigureAwait(false);
 
             // The sink is disposed with the callee's scope, so the handle is
             // already closed here. Moving a file Windows still has open fails.
@@ -303,11 +293,10 @@ internal sealed class TrackDownloader(
         }
     }
 
-    private async Task<long> FetchSegmentsAsync(
-        IReadOnlyList<Uri> segments,
-        string partialPath,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    private async Task<long> FetchSegmentsAsync(IReadOnlyList<Uri> segments,
+                                                string partialPath,
+                                                IProgress<TransferProgress>? progress,
+                                                CancellationToken cancellationToken)
     {
         await using var sink = CreateSink(partialPath);
 
@@ -332,7 +321,7 @@ internal sealed class TrackDownloader(
 
                 // The total is genuinely unknown until the last segment lands,
                 // so HLS reports bytes without a denominator.
-                progress?.Report(new TransferProgress(written, null));
+                progress?.Report(new(written, null));
             }
         }
 
@@ -343,18 +332,17 @@ internal sealed class TrackDownloader(
     /// Streams to a .part file and moves it into place on success, so an
     /// interrupted run never leaves a truncated file that looks complete.
     /// </summary>
-    private static async Task<long> WriteResponseAsync(
-        HttpResponseMessage response,
-        string destination,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    private static async Task<long> WriteResponseAsync(HttpResponseMessage response,
+                                                       string destination,
+                                                       IProgress<TransferProgress>? progress,
+                                                       CancellationToken cancellationToken)
     {
         var partialPath = destination + PartialSuffix;
 
         try
         {
             var written = await CopyToPartialAsync(response, partialPath, progress, cancellationToken)
-                                .ConfigureAwait(false);
+                              .ConfigureAwait(false);
 
             // Both streams are disposed with the callee's scope, so the handles
             // are already closed here. Moving a file Windows still has open fails.
@@ -370,11 +358,10 @@ internal sealed class TrackDownloader(
         }
     }
 
-    private static async Task<long> CopyToPartialAsync(
-        HttpResponseMessage response,
-        string partialPath,
-        IProgress<TransferProgress>? progress,
-        CancellationToken cancellationToken)
+    private static async Task<long> CopyToPartialAsync(HttpResponseMessage response,
+                                                       string partialPath,
+                                                       IProgress<TransferProgress>? progress,
+                                                       CancellationToken cancellationToken)
     {
         var total = response.Content.Headers.ContentLength;
 
@@ -399,7 +386,7 @@ internal sealed class TrackDownloader(
             await sink.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
 
             written += read;
-            progress?.Report(new TransferProgress(written, total));
+            progress?.Report(new(written, total));
         }
 
         return written;

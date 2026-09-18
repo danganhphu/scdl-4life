@@ -9,11 +9,10 @@ using static Scdl.Core.SoundCloud.SoundCloudClientLoggers;
 namespace Scdl.Core.SoundCloud;
 
 /// <summary>Thin, typed client over SoundCloud's internal api-v2.</summary>
-internal sealed class SoundCloudClient(
-    HttpClient http,
-    IClientIdProvider clientIds,
-    IOptions<SoundCloudOptions> options,
-    ILogger<SoundCloudClient> logger) : ISoundCloudClient
+internal sealed class SoundCloudClient(HttpClient http,
+                                       IClientIdProvider clientIds,
+                                       IOptions<SoundCloudOptions> options,
+                                       ILogger<SoundCloudClient> logger) : ISoundCloudClient
 {
     private const string ApiRoot = "https://api-v2.soundcloud.com";
 
@@ -44,15 +43,15 @@ internal sealed class SoundCloudClient(
         switch (kind)
         {
             case "track":
-                var track = JsonSerializer.Deserialize(json, SoundCloudJsonContext.Default.Track)
-                            ?? throw new ScdlException("SoundCloud returned an unreadable track payload.");
+                var track = JsonSerializer.Deserialize(json, SoundCloudJsonContext.Default.Track) ??
+                            throw new ScdlException("SoundCloud returned an unreadable track payload.");
 
                 return [track];
 
             case "playlist":
             case "system-playlist":
-                var playlist = JsonSerializer.Deserialize(json, SoundCloudJsonContext.Default.Playlist)
-                               ?? throw new ScdlException("SoundCloud returned an unreadable playlist payload.");
+                var playlist = JsonSerializer.Deserialize(json, SoundCloudJsonContext.Default.Playlist) ??
+                               throw new ScdlException("SoundCloud returned an unreadable playlist payload.");
 
                 return await HydrateAsync(playlist.Tracks, cancellationToken).ConfigureAwait(false);
 
@@ -64,10 +63,9 @@ internal sealed class SoundCloudClient(
         }
     }
 
-    public async Task<Result<Uri>> GetStreamUriAsync(
-        Track track,
-        Transcoding transcoding,
-        CancellationToken cancellationToken)
+    public async Task<Result<Uri>> GetStreamUriAsync(Track track,
+                                                     Transcoding transcoding,
+                                                     CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(track);
         ArgumentNullException.ThrowIfNull(transcoding);
@@ -88,7 +86,7 @@ internal sealed class SoundCloudClient(
             builder += $"&track_authorization={Uri.EscapeDataString(authorization)}";
         }
 
-        using var response = await SendAsync(new Uri(builder), cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(new(builder), cancellationToken).ConfigureAwait(false);
 
         // An advertised rung that answers 404 or 403 is routine, not a fault, so
         // it comes back as a failed Result rather than an exception.
@@ -105,8 +103,8 @@ internal sealed class SoundCloudClient(
         var location = JsonSerializer.Deserialize(json, SoundCloudJsonContext.Default.StreamLocation)?.Url;
 
         return Uri.TryCreate(location, UriKind.Absolute, out var streamUri)
-            ? streamUri
-            : SoundCloudErrors.StreamUrlUnusable(preset);
+                   ? streamUri
+                   : SoundCloudErrors.StreamUrlUnusable(preset);
     }
 
     public async Task<Uri?> TryGetOriginalUriAsync(Track track, CancellationToken cancellationToken)
@@ -167,17 +165,16 @@ internal sealed class SoundCloudClient(
         }
 
         return resolved.Query.Length is 0
-            ? resolved
-            : new Uri($"{resolved.Scheme}://{resolved.Authority}{resolved.AbsolutePath}");
+                   ? resolved
+                   : new($"{resolved.Scheme}://{resolved.Authority}{resolved.AbsolutePath}");
     }
 
     /// <summary>
     /// Playlist payloads inline only the first few tracks in full; the rest
     /// arrive as id-only stubs that must be fetched in batches.
     /// </summary>
-    private async Task<IReadOnlyList<Track>> HydrateAsync(
-        IReadOnlyList<Track> tracks,
-        CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<Track>> HydrateAsync(IReadOnlyList<Track> tracks,
+                                                          CancellationToken cancellationToken)
     {
         var stubIds = tracks.Where(track => track.IsStub).Select(track => track.Id).ToArray();
 
@@ -230,20 +227,22 @@ internal sealed class SoundCloudClient(
     /// <exception cref="ScdlException">The request was rejected in a way no retry fixes.</exception>
     private void EnsureUsable(HttpResponseMessage response)
     {
-        if (response.StatusCode is HttpStatusCode.Unauthorized)
+        switch (response.StatusCode)
         {
-            throw new ScdlException(
-                _options.OAuthToken is null
-                    ? "SoundCloud rejected the request (401). The track is probably private."
-                    : "SoundCloud rejected the OAuth token (401). Grab a fresh one from devtools.");
-        }
+            case HttpStatusCode.Unauthorized:
+                throw new ScdlException(
+                    _options.OAuthToken is null
+                        ? "SoundCloud rejected the request (401). The track is probably private."
+                        : "SoundCloud rejected the OAuth token (401). Grab a fresh one from devtools.");
 
-        if (response.StatusCode is HttpStatusCode.NotFound)
-        {
-            throw new ScdlException("SoundCloud returned 404. Check the URL, or the track was taken down.");
-        }
+            case HttpStatusCode.NotFound:
+                throw new ScdlException("SoundCloud returned 404. Check the URL, or the track was taken down.");
 
-        response.EnsureSuccessStatusCode();
+            default:
+                response.EnsureSuccessStatusCode();
+
+                break;
+        }
     }
 
     private async Task<HttpResponseMessage> SendAsync(Uri requestUri, CancellationToken cancellationToken)

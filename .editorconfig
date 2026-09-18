@@ -248,7 +248,12 @@ resharper_csharp_wrap_before_first_type_parameter_constraint = true
 resharper_csharp_wrap_multiple_declaration_style = chop_always
 resharper_csharp_wrap_parameters_style = chop_if_long
 resharper_enforce_line_ending_style = true
-resharper_force_attribute_style = join
+# One attribute per section, each in its own brackets. This was `join`, which is
+# why Rider kept offering "Place attributes into single section" - the setting
+# was asking for the merge. Separate sections mean adding an attribute adds a
+# line instead of editing one, which is how the .NET repos write the long
+# [JsonSerializable] and [Arguments] lists.
+resharper_force_attribute_style = separate
 resharper_formatter_off_tag = @formatter:off
 resharper_formatter_on_tag = @formatter:on
 resharper_formatter_tags_enabled = true
@@ -431,6 +436,14 @@ dotnet_diagnostic.RCS1142.severity = none
 # CS1591 would require a doc comment on every public member. Worth revisiting if
 # this is ever packaged for other people; today it would only add noise.
 dotnet_diagnostic.CS1591.severity = none
+
+#### Global suppression files ####
+# These start empty and stay empty until a suppression is genuinely needed, so
+# RCS1093 "file contains no code" is exactly wrong about them. Scoped to the
+# file name rather than turned off repo-wide, because everywhere else an empty
+# .cs file really is dead weight.
+[**/GlobalSuppressions.cs]
+dotnet_diagnostic.RCS1093.severity = none
 
 #### Tests ####
 [tests/**/*.cs]

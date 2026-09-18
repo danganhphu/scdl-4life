@@ -83,7 +83,7 @@ public sealed class FileNamingTests
     [Test]
     public async Task Deduplicate_returns_the_original_path_when_nothing_is_there()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"scdl-{Guid.NewGuid():N}.mp3");
+        var path = Path.Combine(Path.GetTempPath(), $"scdl-{Guid.CreateVersion7():N}.mp3");
 
         await Assert.That(FileNaming.Deduplicate(path)).IsEqualTo(path);
     }

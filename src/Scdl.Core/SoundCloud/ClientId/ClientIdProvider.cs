@@ -8,11 +8,10 @@ namespace Scdl.Core.SoundCloud.ClientId;
 /// bundles and caches it on disk. Scraping is the only option: api-v2 requires
 /// the id and SoundCloud does not issue one for this use.
 /// </summary>
-internal sealed partial class ClientIdProvider(
-    HttpClient http,
-    IOptions<SoundCloudOptions> options,
-    TimeProvider clock,
-    ILogger<ClientIdProvider> logger) : IClientIdProvider, IDisposable
+internal sealed partial class ClientIdProvider(HttpClient http,
+                                               IOptions<SoundCloudOptions> options,
+                                               TimeProvider clock,
+                                               ILogger<ClientIdProvider> logger) : IClientIdProvider, IDisposable
 {
     private static readonly Uri HomePageUri = new("https://soundcloud.com/");
 
@@ -68,7 +67,8 @@ internal sealed partial class ClientIdProvider(
         }
     }
 
-    public void Dispose() => _gate.Dispose();
+    public void Dispose()
+        => _gate.Dispose();
 
     private async Task<string> ScrapeAndCacheAsync(CancellationToken cancellationToken)
     {

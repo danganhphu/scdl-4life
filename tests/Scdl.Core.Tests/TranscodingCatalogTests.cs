@@ -11,10 +11,9 @@ public sealed class TranscodingCatalogTests
     [Arguments("mp3_1_0", 128, AudioCodec.Mp3)]
     [Arguments("mp3_0_0", 128, AudioCodec.Mp3)]
     [Arguments("opus_0_0", 64, AudioCodec.Opus)]
-    public async Task Classify_maps_known_presets_to_their_real_bitrate(
-        string preset,
-        int expectedKbps,
-        AudioCodec expectedCodec)
+    public async Task Classify_maps_known_presets_to_their_real_bitrate(string preset,
+                                                                        int expectedKbps,
+                                                                        AudioCodec expectedCodec)
     {
         var rung = TranscodingCatalog.Classify(preset, mimeType: null);
 
@@ -68,10 +67,9 @@ public sealed class TranscodingCatalogTests
     [Arguments("audio/mp4; codecs=\"mp4a.40.2\"", AudioCodec.Aac, ".m4a")]
     [Arguments("audio/mpeg", AudioCodec.Mp3, ".mp3")]
     [Arguments("audio/ogg; codecs=\"opus\"", AudioCodec.Opus, ".ogg")]
-    public async Task Classify_falls_back_to_mime_type_for_an_unknown_preset(
-        string mimeType,
-        AudioCodec expectedCodec,
-        string expectedExtension)
+    public async Task Classify_falls_back_to_mime_type_for_an_unknown_preset(string mimeType,
+                                                                             AudioCodec expectedCodec,
+                                                                             string expectedExtension)
     {
         var rung = TranscodingCatalog.Classify("something_new_2027", mimeType);
 

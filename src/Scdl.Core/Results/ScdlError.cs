@@ -19,5 +19,6 @@ public readonly record struct ScdlError(string Code, string Message)
     /// <summary>The absence of an error. Never inspect this on a successful result.</summary>
     public static readonly ScdlError None = new(string.Empty, string.Empty);
 
-    public override string ToString() => Message;
+    public override string ToString()
+        => Message;
 }

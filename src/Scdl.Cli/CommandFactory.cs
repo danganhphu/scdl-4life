@@ -59,18 +59,12 @@ internal static class CommandFactory
         };
 
     public static RootCommand CreateRoot()
-    {
-        var root = new RootCommand(
+        => new(
             "Download SoundCloud tracks at the highest bitrate SoundCloud actually serves. " +
-            "There is no 320 kbps rung; 256 kbps AAC (Go+) or the uploader's original master is the ceiling.");
-
-        root.Add(OAuthOption);
-        root.Add(VerboseOption);
-        root.Add(CreateGetCommand());
-        root.Add(CreateFormatsCommand());
-
-        return root;
-    }
+            "There is no 320 kbps rung; 256 kbps AAC (Go+) or the uploader's original master is the ceiling.")
+        {
+            OAuthOption, VerboseOption, CreateGetCommand(), CreateFormatsCommand(),
+        };
 
     private static Command CreateGetCommand()
     {
@@ -319,7 +313,7 @@ internal static class CommandFactory
                                        // lets `scdl get ... 2>$null` print just
                                        // the result.
                                        .AddConsole(options =>
-                                                       options.LogToStandardErrorThreshold = LogLevel.Trace)
+                                           options.LogToStandardErrorThreshold = LogLevel.Trace)
                                        .SetMinimumLevel(verbose ? LogLevel.Debug : LogLevel.Warning));
 
         services.AddScdl(options => options.OAuthToken = oauthToken);

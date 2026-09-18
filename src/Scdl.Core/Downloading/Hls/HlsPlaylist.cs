@@ -91,7 +91,7 @@ public sealed partial record HlsPlaylist
             }
         }
 
-        return new HlsPlaylist
+        return new()
         {
             Segments = segments,
             InitializationSegment = initialization,

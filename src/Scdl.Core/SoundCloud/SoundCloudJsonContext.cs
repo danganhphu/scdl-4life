@@ -8,6 +8,11 @@ namespace Scdl.Core.SoundCloud;
 /// fields without notice, so unmapped members are ignored rather than fatal.
 /// Source generation is what keeps the whole client trim and AOT safe.
 /// </summary>
+/// <remarks>
+/// One attribute per line, each in its own brackets. Merging them into a single
+/// comma-separated group makes adding a type edit an existing line, and lets the
+/// wrapping shift every entry whenever the options attribute above grows.
+/// </remarks>
 [JsonSourceGenerationOptions(
     PropertyNameCaseInsensitive = true,
     NumberHandling = JsonNumberHandling.AllowReadingFromString,
