@@ -30,6 +30,7 @@ public static class TranscodingCatalog
         new("mp3_0_1", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
         new("mp3_0_0", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
         new("mp3_standard", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
+        new("aac_96k", 96, AudioCodec.Aac, ".m4a", RequiresGoPlus: false),
         new("opus_0_0", 64, AudioCodec.Opus, ".ogg", RequiresGoPlus: false),
 
         // end-snippet
@@ -77,21 +78,21 @@ public static class TranscodingCatalog
 
         if (mime.Contains("mp4", StringComparison.OrdinalIgnoreCase))
         {
-            return new AudioRung(preset, 0, AudioCodec.Aac, ".m4a", RequiresGoPlus: false);
+            return new(preset, 0, AudioCodec.Aac, ".m4a", RequiresGoPlus: false);
         }
 
         if (mime.Contains("mpeg", StringComparison.OrdinalIgnoreCase))
         {
-            return new AudioRung(preset, 0, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false);
+            return new(preset, 0, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false);
         }
 
         if (mime.Contains("ogg", StringComparison.OrdinalIgnoreCase) ||
             mime.Contains("opus", StringComparison.OrdinalIgnoreCase))
         {
-            return new AudioRung(preset, 0, AudioCodec.Opus, ".ogg", RequiresGoPlus: false);
+            return new(preset, 0, AudioCodec.Opus, ".ogg", RequiresGoPlus: false);
         }
 
-        return new AudioRung(preset, 0, AudioCodec.Unknown, ".bin", RequiresGoPlus: false);
+        return new(preset, 0, AudioCodec.Unknown, ".bin", RequiresGoPlus: false);
     }
 
     public static DeliveryProtocol ParseProtocol(string? protocol)

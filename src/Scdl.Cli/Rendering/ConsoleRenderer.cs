@@ -1,6 +1,7 @@
 using Scdl.Core.Audio;
 using Scdl.Core.Downloading;
 using Scdl.Core.SoundCloud;
+using Scdl.Core.SoundCloud.Models;
 
 namespace Scdl.Cli.Rendering;
 
@@ -13,13 +14,11 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
 {
     private static readonly string[] Units = ["B", "KiB", "MiB", "GiB"];
 
-    private readonly IAnsiConsole _console = console;
-
     public void TrackHeading(Track track, int index, int total)
     {
         var position = total > 1 ? $"[grey]({index}/{total})[/] " : string.Empty;
 
-        _console.MarkupLine($"{position}[bold]{Escape(track.DisplayArtist)}[/] - {Escape(track.DisplayTitle)}");
+        console.MarkupLine($"{position}[bold]{Escape(track.DisplayArtist)}[/] - {Escape(track.DisplayTitle)}");
     }
 
     public void LadderTable(Track track, IReadOnlyList<StreamOption> options, bool hasGoPlusToken)
@@ -46,7 +45,7 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
             table.AddRow(
                 Escape(option.Rung.Preset),
                 bitrate,
-                option.Rung.Codec.ToString().ToUpperInvariant(),
+                Describe(option.Rung.Codec),
                 option.Protocol.ToString().ToLowerInvariant(),
                 note);
         }
@@ -60,16 +59,16 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
                 ? "uploader enabled downloads"
                 : "[grey]uploader did not enable downloads[/]");
 
-        _console.Write(table);
+        console.Write(table);
 
         if (!hasGoPlusToken && !options.Any(option => option.Rung.Kbps >= TranscodingCatalog.LadderCeilingKbps))
         {
-            _console.MarkupLine(
+            console.MarkupLine(
                 $"[yellow]![/] {TranscodingCatalog.LadderCeilingKbps} kbps AAC is Go+ only. " +
                 "Pass [bold]--oauth[/] to check whether it unlocks here.");
         }
 
-        _console.MarkupLine(
+        console.MarkupLine(
             $"[grey]SoundCloud stores no 320 kbps rung; {TranscodingCatalog.LadderCeilingKbps} kbps AAC is the ceiling.[/]");
     }
 
@@ -78,22 +77,22 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
         var source = result switch
         {
             { Source: DownloadSource.OriginalMaster } => "[green]original master[/]",
-            { Rung: { } rung } => $"{Escape(rung.Preset)} ({rung.Kbps} kbps {rung.Codec})",
+            { Rung: { } rung } => $"{Escape(rung.Preset)} ({rung.Kbps} kbps {Describe(rung.Codec)})",
             _ => "transcoding",
         };
 
-        _console.MarkupLine($"  source  {source}");
-        _console.MarkupLine($"  saved   [bold]{Escape(result.FilePath)}[/] [grey]({FormatBytes(result.Bytes)})[/]");
+        console.MarkupLine($"  source  {source}");
+        console.MarkupLine($"  saved   [bold]{Escape(result.FilePath)}[/] [grey]({FormatBytes(result.Bytes)})[/]");
     }
 
     public void Warning(string message)
-        => _console.MarkupLine($"[yellow]![/] {Escape(message)}");
+        => console.MarkupLine($"[yellow]![/] {Escape(message)}");
 
     public void Error(string message)
-        => _console.MarkupLine($"[red]x[/] {Escape(message)}");
+        => console.MarkupLine($"[red]x[/] {Escape(message)}");
 
     public void Note(string message)
-        => _console.MarkupLine($"[grey]{Escape(message)}[/]");
+        => console.MarkupLine($"[grey]{Escape(message)}[/]");
 
     /// <summary>
     /// Track titles routinely contain square brackets, which Spectre reads as
@@ -101,6 +100,13 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
     /// </summary>
     private static string Escape(string value)
         => Markup.Escape(value);
+
+    /// <summary>
+    /// Codec names are acronyms, so the enum's PascalCase spelling ("Mp3") is
+    /// wrong everywhere it is shown. One place decides how they read.
+    /// </summary>
+    private static string Describe(AudioCodec codec)
+        => codec.ToString().ToUpperInvariant();
 
     public static string FormatBytes(long bytes)
     {

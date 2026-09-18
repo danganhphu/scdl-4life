@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Scdl.Cli.Rendering;
 using Scdl.Core.Downloading;
 using Scdl.Core.SoundCloud;
+using Scdl.Core.SoundCloud.Models;
 using Scdl.Core.Tagging;
 
 namespace Scdl.Cli;
@@ -162,9 +163,9 @@ internal static class CommandFactory
         var downloader = provider.GetRequiredService<ITrackDownloader>();
         var tagger = provider.GetRequiredService<IMediaTagger>();
 
-        var tracks = await soundCloud.ResolveAsync(arguments.Url, cancellationToken).ConfigureAwait(false);
+        var tracks = await soundCloud.ResolveAsync(arguments.Url, cancellationToken);
 
-        if (tracks.Count == 0)
+        if (tracks.Count is 0)
         {
             renderer.Error("Nothing playable at that URL.");
 
@@ -189,8 +190,7 @@ internal static class CommandFactory
 
             try
             {
-                var result = await TransferAsync(console, downloader, request, track, cancellationToken)
-                                 .ConfigureAwait(false);
+                var result = await TransferAsync(console, downloader, request, track, cancellationToken);
 
                 if (result.FellBackFromOriginal)
                 {
@@ -204,7 +204,7 @@ internal static class CommandFactory
 
                 if (!arguments.SkipTags)
                 {
-                    await tagger.TryTagAsync(result.FilePath, track, cancellationToken).ConfigureAwait(false);
+                    await tagger.TryTagAsync(result.FilePath, track, cancellationToken);
                 }
 
                 renderer.Saved(result);
@@ -265,12 +265,10 @@ internal static class CommandFactory
                              task.Value = tick.BytesTransferred;
                          });
 
-                         result = await downloader.DownloadAsync(request, progress, cancellationToken)
-                                                  .ConfigureAwait(false);
+                         result = await downloader.DownloadAsync(request, progress, cancellationToken);
 
                          task.StopTask();
-                     })
-                     .ConfigureAwait(false);
+                     });
 
         return result ?? throw new ScdlException("The transfer produced no result.");
     }
@@ -285,9 +283,9 @@ internal static class CommandFactory
         var renderer = new ConsoleRenderer(AnsiConsole.Console);
         var soundCloud = provider.GetRequiredService<ISoundCloudClient>();
 
-        var tracks = await soundCloud.ResolveAsync(url, cancellationToken).ConfigureAwait(false);
+        var tracks = await soundCloud.ResolveAsync(url, cancellationToken);
 
-        if (tracks.Count == 0)
+        if (tracks.Count is 0)
         {
             renderer.Error("Nothing playable at that URL.");
 
@@ -310,6 +308,18 @@ internal static class CommandFactory
 
         services.AddLogging(builder => builder
                                        .AddSimpleConsole(options => options.SingleLine = true)
+
+                                       // The threshold lives on the provider's
+                                       // ConsoleLoggerOptions, not on the
+                                       // formatter's options, so it needs its own
+                                       // call. Everything the logger emits goes to
+                                       // stderr, leaving stdout to Spectre alone:
+                                       // sharing the stream corrupts the live
+                                       // progress display, and separating them
+                                       // lets `scdl get ... 2>$null` print just
+                                       // the result.
+                                       .AddConsole(options =>
+                                                       options.LogToStandardErrorThreshold = LogLevel.Trace)
                                        .SetMinimumLevel(verbose ? LogLevel.Debug : LogLevel.Warning));
 
         services.AddScdl(options => options.OAuthToken = oauthToken);

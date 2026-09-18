@@ -1,7 +1,7 @@
 using ATL;
-using Scdl.Core.SoundCloud;
+using static Scdl.Core.Tagging.AtlMediaTaggerLoggers;
 using AtlTrack = ATL.Track;
-using ScTrack = Scdl.Core.SoundCloud.Track;
+using ScTrack = Scdl.Core.SoundCloud.Models.Track;
 
 namespace Scdl.Core.Tagging;
 
@@ -10,11 +10,8 @@ namespace Scdl.Core.Tagging;
 /// is what makes it survive trimming and Native AOT, where a reflection heavy
 /// tagger would not.
 /// </summary>
-public sealed partial class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagger> logger) : IMediaTagger
+internal sealed class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagger> logger) : IMediaTagger
 {
-    private readonly HttpClient _http = http;
-    private readonly ILogger<AtlMediaTagger> _logger = logger;
-
     public async Task<bool> TryTagAsync(string filePath, ScTrack track, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
@@ -58,14 +55,14 @@ public sealed partial class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagg
 
             if (!saved)
             {
-                LogTagRejected(filePath);
+                LogTagRejected(logger, filePath);
             }
 
             return saved;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or NotSupportedException)
         {
-            LogTagFailed(filePath, e.Message);
+            LogTagFailed(logger, filePath, e.Message);
 
             return false;
         }
@@ -80,23 +77,14 @@ public sealed partial class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagg
 
         try
         {
-            return await _http.GetByteArrayAsync(artworkUri, cancellationToken).ConfigureAwait(false);
+            return await http.GetByteArrayAsync(artworkUri, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException e)
         {
             // Missing cover art is cosmetic; never fail a download over it.
-            LogArtworkFailed(e.Message);
+            LogArtworkFailed(logger, e.Message);
 
             return null;
         }
     }
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Tagger refused to save {FilePath}.")]
-    private partial void LogTagRejected(string filePath);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not tag {FilePath}: {Reason}")]
-    private partial void LogTagFailed(string filePath, string reason);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Could not fetch cover art: {Reason}")]
-    private partial void LogArtworkFailed(string reason);
 }

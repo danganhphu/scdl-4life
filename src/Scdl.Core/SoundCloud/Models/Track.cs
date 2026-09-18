@@ -1,77 +1,8 @@
 using System.Globalization;
 
-namespace Scdl.Core.SoundCloud;
+namespace Scdl.Core.SoundCloud.Models;
 
-/// <summary>Probe shape, used to discover what <c>/resolve</c> returned before committing to a type.</summary>
-public sealed record ResolvedKind
-{
-    [JsonPropertyName("kind")]
-    public string? Kind { get; init; }
-}
-
-public sealed record SoundCloudUser
-{
-    [JsonPropertyName("username")]
-    public string? Username { get; init; }
-
-    [JsonPropertyName("permalink")]
-    public string? Permalink { get; init; }
-
-    [JsonPropertyName("avatar_url")]
-    public string? AvatarUrl { get; init; }
-}
-
-public sealed record PublisherMetadata
-{
-    [JsonPropertyName("artist")]
-    public string? Artist { get; init; }
-
-    [JsonPropertyName("album_title")]
-    public string? AlbumTitle { get; init; }
-
-    [JsonPropertyName("isrc")]
-    public string? Isrc { get; init; }
-}
-
-public sealed record TranscodingFormat
-{
-    /// <summary>Either <c>progressive</c> (a single file) or <c>hls</c> (a segmented playlist).</summary>
-    [JsonPropertyName("protocol")]
-    public string? Protocol { get; init; }
-
-    [JsonPropertyName("mime_type")]
-    public string? MimeType { get; init; }
-}
-
-public sealed record Transcoding
-{
-    /// <summary>Indirection endpoint. Resolving it yields a short lived signed CDN URL.</summary>
-    [JsonPropertyName("url")]
-    public string? Url { get; init; }
-
-    [JsonPropertyName("preset")]
-    public string? Preset { get; init; }
-
-    [JsonPropertyName("quality")]
-    public string? Quality { get; init; }
-
-    [JsonPropertyName("duration")]
-    public long DurationMs { get; init; }
-
-    /// <summary>True for the 30 second preview served when the account cannot play the full track.</summary>
-    [JsonPropertyName("snipped")]
-    public bool Snipped { get; init; }
-
-    [JsonPropertyName("format")]
-    public TranscodingFormat? Format { get; init; }
-}
-
-public sealed record Media
-{
-    [JsonPropertyName("transcodings")]
-    public IReadOnlyList<Transcoding> Transcodings { get; init; } = [];
-}
-
+/// <summary>A single SoundCloud track as api-v2 describes it.</summary>
 public sealed record Track
 {
     [JsonPropertyName("id")]
@@ -130,7 +61,7 @@ public sealed record Track
     /// downloaded.
     /// </summary>
     [JsonIgnore]
-    public bool IsStub => Media is null || Media.Transcodings.Count == 0;
+    public bool IsStub => Media is null or { Transcodings.Count: 0 };
 
     [JsonIgnore]
     public string DisplayArtist
@@ -169,36 +100,4 @@ public sealed record Track
                out var parsed)
                ? parsed.Year
                : null;
-}
-
-public sealed record Playlist
-{
-    [JsonPropertyName("id")]
-    public long Id { get; init; }
-
-    [JsonPropertyName("title")]
-    public string? Title { get; init; }
-
-    [JsonPropertyName("permalink_url")]
-    public string? PermalinkUrl { get; init; }
-
-    [JsonPropertyName("user")]
-    public SoundCloudUser? User { get; init; }
-
-    [JsonPropertyName("tracks")]
-    public IReadOnlyList<Track> Tracks { get; init; } = [];
-}
-
-/// <summary>Response of resolving a transcoding URL into a playable location.</summary>
-public sealed record StreamLocation
-{
-    [JsonPropertyName("url")]
-    public string? Url { get; init; }
-}
-
-/// <summary>Response of <c>/tracks/{id}/download</c>, pointing at the uploader's original master.</summary>
-public sealed record OriginalDownload
-{
-    [JsonPropertyName("redirectUri")]
-    public string? RedirectUri { get; init; }
 }

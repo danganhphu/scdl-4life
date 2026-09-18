@@ -1,6 +1,7 @@
 using System.Buffers;
+using System.Collections.Frozen;
 using System.Text;
-using Scdl.Core.SoundCloud;
+using Scdl.Core.SoundCloud.Models;
 
 namespace Scdl.Core.Downloading;
 
@@ -15,6 +16,11 @@ public static class FileNaming
 
     private static readonly SearchValues<char> InvalidCharacters =
         SearchValues.Create(new string(Path.GetInvalidFileNameChars()) + ":*?\"<>|");
+
+    private static readonly FrozenSet<string> AudioExtensions = new[]
+    {
+        ".mp3", ".m4a", ".mp4", ".aac", ".wav", ".flac", ".ogg", ".opus", ".aiff", ".aif", ".wma",
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Collapses anything unsafe into single spaces and trims to a sane length.</summary>
     public static string Sanitize(string raw)
@@ -54,14 +60,28 @@ public static class FileNaming
             cleaned = cleaned[..MaxStemLength].TrimEnd();
         }
 
-        return cleaned.Length == 0 ? "untitled" : cleaned;
+        return cleaned.Length is 0 ? "untitled" : cleaned;
     }
 
     public static string BuildStem(Track track)
     {
         ArgumentNullException.ThrowIfNull(track);
 
-        return Sanitize($"{track.DisplayArtist} - {track.DisplayTitle}");
+        return Sanitize($"{track.DisplayArtist} - {StripAudioExtension(track.DisplayTitle)}");
+    }
+
+    /// <summary>
+    /// Drops a trailing audio extension from a track title. Uploaders routinely
+    /// upload "Some Mix.mp3" and SoundCloud keeps the file name as the title, so
+    /// appending the container extension would otherwise produce "....mp3.mp3".
+    /// </summary>
+    internal static string StripAudioExtension(string title)
+    {
+        var extension = Path.GetExtension(title);
+
+        return extension.Length > 1 && AudioExtensions.Contains(extension)
+            ? title[..^extension.Length].TrimEnd()
+            : title;
     }
 
     /// <summary>

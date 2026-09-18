@@ -1,5 +1,6 @@
 using Scdl.Core.Audio;
 using Scdl.Core.SoundCloud;
+using Scdl.Core.SoundCloud.Models;
 
 namespace Scdl.Core.Tests;
 

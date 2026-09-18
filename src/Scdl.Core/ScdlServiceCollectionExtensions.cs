@@ -3,16 +3,24 @@ using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Scdl.Core.Downloading;
+using Scdl.Core.Downloading.Hls;
 using Scdl.Core.SoundCloud;
+using Scdl.Core.SoundCloud.ClientId;
 using Scdl.Core.Tagging;
 
 namespace Scdl.Core;
 
+/// <summary>Registers everything needed to resolve, download and tag SoundCloud tracks.</summary>
 public static class ScdlServiceCollectionExtensions
 {
-    /// <summary>Registers everything needed to resolve, download and tag SoundCloud tracks.</summary>
-    public static IServiceCollection AddScdl(this IServiceCollection services,
-                                             Action<SoundCloudOptions>? configure = null)
+    private const string UserAgentHeader = "User-Agent";
+
+    /// <summary>A transfer runs as long as the file needs; the 100 second default would cut it off.</summary>
+    private static readonly TimeSpan TransferTimeout = TimeSpan.FromMinutes(30);
+
+    public static IServiceCollection AddScdl(
+        this IServiceCollection services,
+        Action<SoundCloudOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
@@ -26,16 +34,16 @@ public static class ScdlServiceCollectionExtensions
         optionsBuilder
             .Validate(
                 options => options.MaxParallelSegments
-                               is >= SoundCloudOptions.MinParallelSegments and
-                                  <= SoundCloudOptions.MaxAllowedParallelSegments,
-                $"MaxParallelSegments must be between {SoundCloudOptions.MinParallelSegments} " +
-                $"and {SoundCloudOptions.MaxAllowedParallelSegments}.")
+                    is >= SoundCloudOptions.MinParallelSegments
+                    and <= SoundCloudOptions.MaxAllowedParallelSegments,
+                $"{nameof(SoundCloudOptions.MaxParallelSegments)} must be between "
+                + $"{SoundCloudOptions.MinParallelSegments} and {SoundCloudOptions.MaxAllowedParallelSegments}.")
             .Validate(
                 options => options.ClientIdCacheLifetime > TimeSpan.Zero,
-                "ClientIdCacheLifetime must be positive.")
+                $"{nameof(SoundCloudOptions.ClientIdCacheLifetime)} must be positive.")
             .Validate(
                 options => !string.IsNullOrWhiteSpace(options.UserAgent),
-                "UserAgent must not be empty.")
+                $"{nameof(SoundCloudOptions.UserAgent)} must not be empty.")
             .ValidateOnStart();
 
         services.TryAddSingleton(TimeProvider.System);
@@ -67,7 +75,7 @@ public static class ScdlServiceCollectionExtensions
         // group there reads as ambiguous even though Roslyn binds the Action.
         // ConfigureHttpClient has no such twin.
         services.AddHttpClient<TInterface, TImplementation>()
-                .ConfigureHttpClient(ConfigureCommon)
+                .ConfigureHttpClient(ApplyUserAgent)
                 .ConfigurePrimaryHttpMessageHandler(CreateHandler)
                 .AddStandardResilienceHandler();
     }
@@ -80,24 +88,29 @@ public static class ScdlServiceCollectionExtensions
         where TImplementation : class, TInterface
     {
         services.AddHttpClient<TInterface, TImplementation>()
-                .ConfigureHttpClient(ConfigureTransfer)
+                .ConfigureHttpClient(ApplyTransferSettings)
                 .ConfigurePrimaryHttpMessageHandler(CreateHandler);
     }
 
-    private static void ConfigureTransfer(HttpClient client)
+    /// <summary>
+    /// Reads the agent string from options rather than restating it, so
+    /// <see cref="SoundCloudOptions.UserAgent"/> is configuration that actually
+    /// takes effect. The CDN is noticeably less cooperative with a default .NET
+    /// agent, which is why the default looks like a browser.
+    /// </summary>
+    private static void ApplyUserAgent(IServiceProvider provider, HttpClient client)
     {
-        ConfigureCommon(client);
+        var options = provider.GetRequiredService<IOptions<SoundCloudOptions>>().Value;
 
-        // A transfer is allowed to take as long as the file needs; the default
-        // 100 seconds would cut off any sizeable download.
-        client.Timeout = TimeSpan.FromMinutes(30);
+        client.DefaultRequestHeaders.TryAddWithoutValidation(UserAgentHeader, options.UserAgent);
     }
 
-    private static void ConfigureCommon(HttpClient client)
-        => client.DefaultRequestHeaders.TryAddWithoutValidation(
-            "User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
-            "Chrome/130.0.0.0 Safari/537.36");
+    private static void ApplyTransferSettings(IServiceProvider provider, HttpClient client)
+    {
+        ApplyUserAgent(provider, client);
+
+        client.Timeout = TransferTimeout;
+    }
 
     private static HttpMessageHandler CreateHandler()
         => new SocketsHttpHandler

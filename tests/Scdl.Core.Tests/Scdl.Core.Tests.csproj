@@ -4,8 +4,9 @@
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
 
-    <!-- TUnit runs on Microsoft.Testing.Platform, not VSTest. -->
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <!-- TUnit runs on Microsoft.Testing.Platform. The runner is selected by the
+         "test" section in global.json; TestingPlatformDotnetTestSupport is the
+         older VSTest-bridge opt-in and must NOT be set alongside it. -->
 
     <!-- Moq builds proxies at runtime, so the test host is the one project in
          the solution that cannot be AOT clean. Overrides the solution default. -->

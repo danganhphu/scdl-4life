@@ -1,21 +1,28 @@
 using System.Diagnostics;
+using static Scdl.Core.Downloading.Hls.FfmpegMuxerLoggers;
 
-namespace Scdl.Core.Downloading;
+namespace Scdl.Core.Downloading.Hls;
 
 /// <summary>
 /// Stream copies an HLS playlist into a container using ffmpeg. Nothing is
 /// re-encoded, so the audio lands byte identical to what the CDN served.
 /// </summary>
 /// <remarks>
-/// This is only reached for fragmented MP4 playlists. Plain segment playlists
-/// are concatenated in managed code, which is why ffmpeg is an optional
-/// dependency rather than a hard one.
+/// Only reached for fragmented MP4 playlists. Plain segment playlists are
+/// concatenated in managed code, which is why ffmpeg is an optional dependency
+/// rather than a hard one.
 /// </remarks>
-public sealed partial class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
+internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
 {
-    private readonly ILogger<FfmpegMuxer> _logger = logger;
+    private static readonly string[] BaseArguments =
+    [
+        "-hide_banner",
+        "-loglevel", "error",
+        "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
+    ];
 
-    private static readonly string[] MuxerBoundArguments = ["-movflags", "+faststart"];
+    /// <summary>faststart is an MP4 muxer option; other muxers reject it outright.</summary>
+    private static readonly string[] Mp4Arguments = ["-movflags", "+faststart"];
 
     public bool IsAvailable => Locate() is not null;
 
@@ -45,6 +52,8 @@ public sealed partial class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMux
         return null;
     }
 
+    /// <summary>Stream copies the playlist into <paramref name="outputPath"/> without re-encoding.</summary>
+    /// <exception cref="ScdlException">ffmpeg is not on PATH, could not start, or exited non-zero.</exception>
     public async Task MuxAsync(Uri playlistUri, string outputPath, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(playlistUri);
@@ -60,25 +69,19 @@ public sealed partial class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMux
             RedirectStandardError = true, RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true,
         };
 
-        string[] arguments =
-        [
-            "-hide_banner",
-            "-loglevel", "error",
-            "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
-            "-i", playlistUri.AbsoluteUri,
-            "-c", "copy",
-        ];
-
-        foreach (var argument in arguments)
+        foreach (var argument in BaseArguments)
         {
             startInfo.ArgumentList.Add(argument);
         }
 
-        // faststart is an MP4 muxer option; passing it to another muxer is a
-        // hard error in ffmpeg rather than a warning.
+        startInfo.ArgumentList.Add("-i");
+        startInfo.ArgumentList.Add(playlistUri.AbsoluteUri);
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add("copy");
+
         if (Path.GetExtension(outputPath) is ".m4a" or ".mp4")
         {
-            foreach (var argument in MuxerBoundArguments)
+            foreach (var argument in Mp4Arguments)
             {
                 startInfo.ArgumentList.Add(argument);
             }
@@ -87,7 +90,7 @@ public sealed partial class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMux
         startInfo.ArgumentList.Add("-y");
         startInfo.ArgumentList.Add(outputPath);
 
-        LogMuxing(outputPath);
+        LogMuxing(logger, outputPath);
 
         using var process = Process.Start(startInfo) ?? throw new ScdlException("Could not start ffmpeg.");
 
@@ -99,14 +102,11 @@ public sealed partial class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMux
         await Task.WhenAll(stderrTask, stdoutTask).ConfigureAwait(false);
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
-        if (process.ExitCode != 0)
+        if (process.ExitCode is not 0)
         {
             var stderr = await stderrTask.ConfigureAwait(false);
 
             throw new ScdlException($"ffmpeg failed (exit {process.ExitCode}):{Environment.NewLine}{stderr.Trim()}");
         }
     }
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Stream copying HLS into {OutputPath} with ffmpeg.")]
-    private partial void LogMuxing(string outputPath);
 }

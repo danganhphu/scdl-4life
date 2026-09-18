@@ -1,3 +1,6 @@
+using Scdl.Core.SoundCloud.ClientId;
+using Scdl.Core.SoundCloud.Models;
+
 namespace Scdl.Core.SoundCloud;
 
 /// <summary>
@@ -16,4 +19,4 @@ namespace Scdl.Core.SoundCloud;
 [JsonSerializable(typeof(StreamLocation))]
 [JsonSerializable(typeof(OriginalDownload))]
 [JsonSerializable(typeof(CachedClientId))]
-public sealed partial class SoundCloudJsonContext : JsonSerializerContext;
+internal sealed partial class SoundCloudJsonContext : JsonSerializerContext;

@@ -1,7 +1,10 @@
+using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Scdl.Core.SoundCloud;
+using Scdl.Core.SoundCloud.ClientId;
+using Scdl.Core.SoundCloud.Models;
 using Scdl.Core.Tests.Fakes;
 
 namespace Scdl.Core.Tests;
@@ -139,11 +142,52 @@ public sealed class SoundCloudClientTests
             Preset = "mp3_1_0",
         };
 
-        var uri = await client.GetStreamUriAsync(track, transcoding, CancellationToken.None);
+        var result = await client.GetStreamUriAsync(track, transcoding, CancellationToken.None);
 
-        await Assert.That(uri.AbsoluteUri).IsEqualTo("https://cdn.invalid/playlist.m3u8");
+        await Assert.That(result.TryGetValue(out var uri)).IsTrue();
+        await Assert.That(uri!.AbsoluteUri).IsEqualTo("https://cdn.invalid/playlist.m3u8");
         await Assert.That(handler.Requests[0].Query.Contains("track_authorization=sig-abc", StringComparison.Ordinal))
             .IsTrue();
+    }
+
+    /// <summary>
+    /// SoundCloud lists rungs it will not actually serve. This is the case that
+    /// made Result worth having: a 404 here is routine, and the caller answers
+    /// it by stepping down the ladder rather than by catching anything.
+    /// </summary>
+    [Test]
+    public async Task GetStreamUriAsync_reports_an_advertised_but_unserved_rung_as_a_failure()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var client = CreateClient(handler, ClientIdProvider().Object);
+
+        var transcoding = new Transcoding
+        {
+            Url = "https://api-v2.soundcloud.com/media/1/x/stream/hls",
+            Preset = "abr_sq",
+        };
+
+        var result = await client.GetStreamUriAsync(new Track { Id = 1 }, transcoding, CancellationToken.None);
+
+        await Assert.That(result.IsFailure).IsTrue();
+        await Assert.That(result.Error.Code).IsEqualTo("soundcloud.rung_not_served");
+        await Assert.That(result.Error.Message.Contains("abr_sq", StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task GetStreamUriAsync_reports_a_transcoding_with_no_endpoint_as_a_failure()
+    {
+        var handler = StubHttpMessageHandler.ReturningJson("{}");
+        var client = CreateClient(handler, ClientIdProvider().Object);
+
+        var result = await client.GetStreamUriAsync(
+            new Track { Id = 1 },
+            new Transcoding { Url = null, Preset = "mp3_1_0" },
+            CancellationToken.None);
+
+        await Assert.That(result.IsFailure).IsTrue();
+        await Assert.That(result.Error.Code).IsEqualTo("soundcloud.rung_has_no_endpoint");
+        await Assert.That(handler.Requests.Count).IsEqualTo(0);
     }
 
     /// <summary>

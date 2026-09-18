@@ -25,7 +25,7 @@ internal static class Program
 
         try
         {
-            return await parseResult.InvokeAsync(configuration).ConfigureAwait(false);
+            return await parseResult.InvokeAsync(configuration);
         }
         catch (ScdlException e)
         {

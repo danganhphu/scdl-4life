@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Scdl.Core.Downloading;
+namespace Scdl.Core.Downloading.Hls;
 
 /// <summary>
 /// The parsed form of an HLS media playlist, reduced to what matters for
@@ -55,7 +55,7 @@ public sealed partial record HlsPlaylist
         {
             var line = rawLine.Trim();
 
-            if (line.Length == 0)
+            if (line.Length is 0)
             {
                 continue;
             }

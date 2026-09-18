@@ -1,4 +1,4 @@
-using Scdl.Core.Downloading;
+using Scdl.Core.Downloading.Hls;
 
 namespace Scdl.Core.Tests;
 
