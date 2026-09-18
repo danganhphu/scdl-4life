@@ -12,7 +12,10 @@ namespace Scdl.Core.Tagging;
 /// </summary>
 internal sealed class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagger> logger) : IMediaTagger
 {
-    public async Task<bool> TryTagAsync(string filePath, ScTrack track, CancellationToken cancellationToken)
+    public async Task<bool> TryTagAsync(string filePath,
+                                        ScTrack track,
+                                        SetPosition? setPosition,
+                                        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(track);
@@ -31,7 +34,17 @@ internal sealed class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagger> lo
                 Comment = track.PermalinkUrl ?? string.Empty,
             };
 
-            if (track.PublisherMetadata?.AlbumTitle is { Length: > 0 } album)
+            // A set is the only thing here that genuinely is an album, and the
+            // only thing with a running order. For a single track both stay
+            // unwritten rather than invented, unless SoundCloud itself named an
+            // album in the publisher metadata.
+            if (setPosition is { } position)
+            {
+                tagged.Album = position.Album;
+                tagged.TrackNumber = position.Number;
+                tagged.TrackTotal = position.Total;
+            }
+            else if (track.PublisherMetadata?.AlbumTitle is { Length: > 0 } album)
             {
                 tagged.Album = album;
             }

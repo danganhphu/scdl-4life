@@ -80,6 +80,26 @@ public sealed class FileNamingTests
         await Assert.That(FileNaming.BuildStem(bare)).IsEqualTo("Unknown Artist - track-42");
     }
 
+    /// <summary>
+    /// Uploaders leave the ".mp3" of the file they uploaded in the title, and
+    /// SoundCloud keeps it. Appending the container extension on top would give
+    /// "... .mp3.mp3". DisplayTitle drops it once, so the file name, the tag and
+    /// the console heading all agree.
+    /// </summary>
+    [Test]
+    public async Task BuildStem_drops_an_extension_the_uploader_left_in_the_title()
+    {
+        var track = new Track
+        {
+            Id = 1,
+            Title = "Người Phản Bội x Lá Xa Lìa Cành - NSon Mix.mp3",
+            User = new SoundCloudUser { Username = "NSon Remix" },
+        };
+
+        await Assert.That(FileNaming.BuildStem(track))
+                    .IsEqualTo("NSon Remix - Người Phản Bội x Lá Xa Lìa Cành - NSon Mix");
+    }
+
     [Test]
     public async Task Deduplicate_returns_the_original_path_when_nothing_is_there()
     {

@@ -10,5 +10,16 @@ public interface IMediaTagger
     /// the audio is already on disk, and a metadata failure is never worth
     /// discarding it over.
     /// </summary>
-    Task<bool> TryTagAsync(string filePath, Track track, CancellationToken cancellationToken);
+    /// <param name="filePath">The file to tag.</param>
+    /// <param name="track">The track it holds.</param>
+    /// <param name="setPosition">
+    /// Where the track sat in the set it came from, or null for a single track.
+    /// A single track genuinely has no album and no track number, so nothing is
+    /// written for one rather than something invented.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the artwork fetch.</param>
+    Task<bool> TryTagAsync(string filePath,
+                           Track track,
+                           SetPosition? setPosition,
+                           CancellationToken cancellationToken);
 }

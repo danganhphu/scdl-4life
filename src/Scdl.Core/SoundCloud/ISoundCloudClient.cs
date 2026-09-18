@@ -5,8 +5,8 @@ namespace Scdl.Core.SoundCloud;
 
 public interface ISoundCloudClient
 {
-    /// <summary>Expands a track, set or playlist URL into a flat list of playable tracks.</summary>
-    Task<IReadOnlyList<Track>> ResolveAsync(Uri url, CancellationToken cancellationToken);
+    /// <summary>Expands a track, set or playlist URL into the playable tracks behind it.</summary>
+    Task<ResolvedTracks> ResolveAsync(Uri url, CancellationToken cancellationToken);
 
     /// <summary>
     /// Turns a transcoding entry into the signed CDN location that actually

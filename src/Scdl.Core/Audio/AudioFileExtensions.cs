@@ -73,4 +73,25 @@ public static class AudioFileExtensions
         Aif,
         Wma,
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Drops a trailing audio extension from a name.
+    /// </summary>
+    /// <remarks>
+    /// Uploaders routinely upload "Some Mix.mp3" and SoundCloud keeps the file
+    /// name as the track title. Left alone it produces "... .mp3.mp3" on disk
+    /// and a track called "... .mp3" in every player. This lives here, next to
+    /// the extensions themselves, so the one caller that remembered to strip and
+    /// the two that forgot cannot diverge again.
+    /// </remarks>
+    public static string StripFrom(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var extension = Path.GetExtension(name);
+
+        return extension.Length > 1 && All.Contains(extension)
+                   ? name[..^extension.Length].TrimEnd()
+                   : name;
+    }
 }
