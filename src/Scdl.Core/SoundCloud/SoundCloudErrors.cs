@@ -4,9 +4,12 @@ namespace Scdl.Core.SoundCloud;
 
 /// <summary>
 /// The failures api-v2 hands back that a caller can actually do something about.
-/// Kept together because two types branch on them; anything used by one type
-/// stays a literal where it is used.
 /// </summary>
+/// <remarks>
+/// The codes live on <see cref="ScdlErrorCode"/>; this is only where each one
+/// gets its sentence. Splitting them that way means the code is a compiler
+/// checked symbol while the message stays prose that can be reworded freely.
+/// </remarks>
 internal static class SoundCloudErrors
 {
     /// <summary>
@@ -17,16 +20,16 @@ internal static class SoundCloudErrors
     /// </summary>
     internal static ScdlError RungNotServed(string preset, int statusCode)
         => new(
-            SoundCloudErrorCodes.RungNotServed,
+            ScdlErrorCode.RungNotServed,
             $"SoundCloud advertises {preset} but will not serve it (HTTP {statusCode}).");
 
     /// <summary>The transcoding entry carried no endpoint at all.</summary>
     internal static ScdlError RungHasNoEndpoint(string preset)
-        => new(SoundCloudErrorCodes.RungHasNoEndpoint, $"Rung {preset} has no stream endpoint.");
+        => new(ScdlErrorCode.RungHasNoEndpoint, $"Rung {preset} has no stream endpoint.");
 
     /// <summary>A 200 that did not contain a usable URL.</summary>
     internal static ScdlError StreamUrlUnusable(string preset)
         => new(
-            SoundCloudErrorCodes.StreamUrlUnusable,
+            ScdlErrorCode.StreamUrlUnusable,
             $"SoundCloud returned no usable stream URL for {preset}.");
 }

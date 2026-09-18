@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using Scdl.Core.Results;
 using Scdl.Core.SoundCloud;
 using Scdl.Core.SoundCloud.ClientId;
 using Scdl.Core.SoundCloud.Models;
@@ -169,7 +170,7 @@ public sealed class SoundCloudClientTests
         var result = await client.GetStreamUriAsync(new Track { Id = 1 }, transcoding, CancellationToken.None);
 
         await Assert.That(result.IsFailure).IsTrue();
-        await Assert.That(result.Error.Code).IsEqualTo(SoundCloudErrorCodes.RungNotServed);
+        await Assert.That(result.Error.Code).IsEqualTo(ScdlErrorCode.RungNotServed);
         await Assert.That(result.Error.Message.Contains("abr_sq", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -185,7 +186,7 @@ public sealed class SoundCloudClientTests
                          CancellationToken.None);
 
         await Assert.That(result.IsFailure).IsTrue();
-        await Assert.That(result.Error.Code).IsEqualTo(SoundCloudErrorCodes.RungHasNoEndpoint);
+        await Assert.That(result.Error.Code).IsEqualTo(ScdlErrorCode.RungHasNoEndpoint);
         await Assert.That(handler.Requests.Count).IsEqualTo(0);
     }
 

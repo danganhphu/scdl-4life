@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Scdl.Cli.Rendering;
 using Scdl.Core.Downloading;
+using Scdl.Core.Results;
 using Scdl.Core.SoundCloud;
 using Scdl.Core.SoundCloud.Models;
 using Scdl.Core.Tagging;
@@ -10,9 +11,6 @@ namespace Scdl.Cli;
 
 internal static class CommandFactory
 {
-    internal const int ExitSuccess = 0;
-    internal const int ExitFailure = 1;
-
     private static readonly Option<string?> OAuthOption =
         new("--oauth")
         {
@@ -163,7 +161,7 @@ internal static class CommandFactory
         {
             renderer.Error("Nothing playable at that URL.");
 
-            return ExitFailure;
+            return ScdlExitCode.Unavailable;
         }
 
         var failures = 0;
@@ -215,10 +213,10 @@ internal static class CommandFactory
         {
             renderer.Warning($"{failures} of {tracks.Count} track(s) failed.");
 
-            return ExitFailure;
+            return ScdlExitCode.Failure;
         }
 
-        return ExitSuccess;
+        return ScdlExitCode.Success;
     }
 
     private static async Task<DownloadResult> TransferAsync(IAnsiConsole console,
@@ -283,7 +281,7 @@ internal static class CommandFactory
         {
             renderer.Error("Nothing playable at that URL.");
 
-            return ExitFailure;
+            return ScdlExitCode.Unavailable;
         }
 
         for (var i = 0; i < tracks.Count; i++)
@@ -293,7 +291,7 @@ internal static class CommandFactory
             renderer.LadderTable(track, TrackStreams.Rank(track), oauthToken is { Length: > 0 });
         }
 
-        return ExitSuccess;
+        return ScdlExitCode.Success;
     }
 
     private static ServiceProvider BuildProvider(string? oauthToken, bool verbose)

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Scdl.Core.Results;
 using static Scdl.Core.SoundCloud.ClientId.ClientIdProviderLoggers;
 
 namespace Scdl.Core.SoundCloud.ClientId;
@@ -117,7 +118,8 @@ internal sealed partial class ClientIdProvider(HttpClient http,
         }
 
         throw new ScdlException(
-            "Could not find a client_id in the SoundCloud web player bundles. The page layout likely changed.");
+            "Could not find a client_id in the SoundCloud web player bundles. The page layout likely changed.",
+            ScdlErrorCode.ClientIdUnavailable);
     }
 
     private string? ReadCache()

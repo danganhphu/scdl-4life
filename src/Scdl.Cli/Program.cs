@@ -1,11 +1,10 @@
 using Scdl.Cli.Rendering;
+using Scdl.Core.Results;
 
 namespace Scdl.Cli;
 
 internal static class Program
 {
-    private const int ExitCancelled = 130;
-
     private static async Task<int> Main(string[] args)
     {
         var parseResult = CommandFactory.CreateRoot().Parse(args);
@@ -31,19 +30,22 @@ internal static class Program
         {
             renderer.Error(e.Message);
 
-            return CommandFactory.ExitFailure;
+            // The exit code is this tool's machine-readable output: a script can
+            // tell "install ffmpeg" from "that track is gone" without reading
+            // the English.
+            return ScdlExitCode.For(e.Code);
         }
         catch (OperationCanceledException)
         {
             renderer.Warning("Cancelled.");
 
-            return ExitCancelled;
+            return ScdlExitCode.Cancelled;
         }
         catch (HttpRequestException e)
         {
             renderer.Error($"Network error: {e.Message}");
 
-            return CommandFactory.ExitFailure;
+            return ScdlExitCode.Failure;
         }
     }
 }

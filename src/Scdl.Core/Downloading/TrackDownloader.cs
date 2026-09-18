@@ -1,5 +1,6 @@
 using Scdl.Core.Audio;
 using Scdl.Core.Downloading.Hls;
+using Scdl.Core.Results;
 using Scdl.Core.SoundCloud;
 using Scdl.Core.SoundCloud.Models;
 using static Scdl.Core.Downloading.TrackDownloaderLoggers;
@@ -128,7 +129,8 @@ internal sealed class TrackDownloader(HttpClient http,
                 // adding a protocol to the enum and forgetting it here shows up
                 // as a visible omission.
                 DeliveryProtocol.Unknown or _ => throw new ScdlException(
-                                                     $"Unsupported delivery protocol '{option.Transcoding.Format?.Protocol ?? "unknown"}'."),
+                                                     $"Unsupported delivery protocol '{option.Transcoding.Format?.Protocol ?? "unknown"}'.",
+                                                     ScdlErrorCode.UnsupportedProtocol),
             };
 
             if (bytes is not null)
@@ -155,7 +157,8 @@ internal sealed class TrackDownloader(HttpClient http,
 
         throw new ScdlException(
             $"No rung could be downloaded. Tried: {string.Join("; ", attempts)}. " +
-            "If every rung needs a muxer, install ffmpeg: winget install Gyan.FFmpeg");
+            "If every rung needs a muxer, install ffmpeg: winget install Gyan.FFmpeg",
+            ScdlErrorCode.NoRungDownloadable);
     }
 
     /// <summary>
@@ -172,7 +175,9 @@ internal sealed class TrackDownloader(HttpClient http,
 
         if (ranked.Count is 0)
         {
-            throw new ScdlException("SoundCloud offered no playable stream for this track.");
+            throw new ScdlException(
+                "SoundCloud offered no playable stream for this track.",
+                ScdlErrorCode.NoPlayableStream);
         }
 
         if (preset is not { Length: > 0 })
@@ -187,7 +192,9 @@ internal sealed class TrackDownloader(HttpClient http,
 
         var available = string.Join(", ", ranked.Select(option => option.Rung.Preset));
 
-        throw new ScdlException($"Preset '{preset}' is not offered for this track. Available: {available}");
+        throw new ScdlException(
+            $"Preset '{preset}' is not offered for this track. Available: {available}",
+            ScdlErrorCode.PresetNotOffered);
     }
 
     private async Task<long> DownloadProgressiveAsync(Uri streamUri,
@@ -229,12 +236,16 @@ internal sealed class TrackDownloader(HttpClient http,
 
         if (playlist.IsMasterPlaylist)
         {
-            throw new ScdlException("SoundCloud returned a master playlist where a media playlist was expected.");
+            throw new ScdlException(
+                "SoundCloud returned a master playlist where a media playlist was expected.",
+                ScdlErrorCode.MasterPlaylistUnexpected);
         }
 
         if (playlist.IsEncrypted)
         {
-            throw new ScdlException("This HLS playlist is encrypted, which scdl does not handle.");
+            throw new ScdlException(
+                "This HLS playlist is encrypted, which scdl does not handle.",
+                ScdlErrorCode.EncryptedPlaylist);
         }
 
         if (playlist.RequiresMuxer)
@@ -256,7 +267,7 @@ internal sealed class TrackDownloader(HttpClient http,
 
         if (playlist.Segments.Count is 0)
         {
-            throw new ScdlException("The HLS playlist listed no segments.");
+            throw new ScdlException("The HLS playlist listed no segments.", ScdlErrorCode.PlaylistHasNoSegments);
         }
 
         return await ConcatenateSegmentsAsync(playlist.Segments, destination, progress, cancellationToken)

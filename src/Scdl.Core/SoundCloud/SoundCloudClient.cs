@@ -44,22 +44,30 @@ internal sealed class SoundCloudClient(HttpClient http,
         {
             case "track":
                 var track = JsonSerializer.Deserialize(json, SoundCloudJsonContext.Default.Track) ??
-                            throw new ScdlException("SoundCloud returned an unreadable track payload.");
+                            throw new ScdlException(
+                                "SoundCloud returned an unreadable track payload.",
+                                ScdlErrorCode.UnreadablePayload);
 
                 return [track];
 
             case "playlist":
             case "system-playlist":
                 var playlist = JsonSerializer.Deserialize(json, SoundCloudJsonContext.Default.Playlist) ??
-                               throw new ScdlException("SoundCloud returned an unreadable playlist payload.");
+                               throw new ScdlException(
+                                   "SoundCloud returned an unreadable playlist payload.",
+                                   ScdlErrorCode.UnreadablePayload);
 
                 return await HydrateAsync(playlist.Tracks, cancellationToken).ConfigureAwait(false);
 
             case "user":
-                throw new ScdlException("That is a user profile. Point scdl at a single track or a set instead.");
+                throw new ScdlException(
+                    "That is a user profile. Point scdl at a single track or a set instead.",
+                    ScdlErrorCode.UnsupportedResource);
 
             default:
-                throw new ScdlException($"Unsupported SoundCloud resource (kind '{kind ?? "unknown"}').");
+                throw new ScdlException(
+                    $"Unsupported SoundCloud resource (kind '{kind ?? "unknown"}').",
+                    ScdlErrorCode.UnsupportedResource);
         }
     }
 
@@ -233,10 +241,13 @@ internal sealed class SoundCloudClient(HttpClient http,
                 throw new ScdlException(
                     _options.OAuthToken is null
                         ? "SoundCloud rejected the request (401). The track is probably private."
-                        : "SoundCloud rejected the OAuth token (401). Grab a fresh one from devtools.");
+                        : "SoundCloud rejected the OAuth token (401). Grab a fresh one from devtools.",
+                    ScdlErrorCode.Unauthorized);
 
             case HttpStatusCode.NotFound:
-                throw new ScdlException("SoundCloud returned 404. Check the URL, or the track was taken down.");
+                throw new ScdlException(
+                    "SoundCloud returned 404. Check the URL, or the track was taken down.",
+                    ScdlErrorCode.NotFound);
 
             default:
                 response.EnsureSuccessStatusCode();

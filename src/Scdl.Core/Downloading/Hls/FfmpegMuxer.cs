@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Scdl.Core.Results;
 using static Scdl.Core.Downloading.Hls.FfmpegMuxerLoggers;
 
 namespace Scdl.Core.Downloading.Hls;
@@ -62,7 +63,8 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
         var ffmpeg = Locate() ??
                      throw new ScdlException(
                          "This track's HLS playlist uses fragmented MP4, which needs a muxer, and ffmpeg is not on PATH. " +
-                         "Install it with: winget install Gyan.FFmpeg");
+                         "Install it with: winget install Gyan.FFmpeg",
+                         ScdlErrorCode.MuxerUnavailable);
 
         var startInfo = new ProcessStartInfo(ffmpeg)
         {
@@ -92,7 +94,8 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
 
         LogMuxing(logger, outputPath);
 
-        using var process = Process.Start(startInfo) ?? throw new ScdlException("Could not start ffmpeg.");
+        using var process = Process.Start(startInfo) ??
+                            throw new ScdlException("Could not start ffmpeg.", ScdlErrorCode.MuxerFailed);
 
         // Both pipes must be drained concurrently. Reading one to completion
         // while the other fills its buffer is a classic deadlock.
@@ -106,7 +109,9 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
         {
             var stderr = await stderrTask.ConfigureAwait(false);
 
-            throw new ScdlException($"ffmpeg failed (exit {process.ExitCode}):{Environment.NewLine}{stderr.Trim()}");
+            throw new ScdlException(
+                $"ffmpeg failed (exit {process.ExitCode}):{Environment.NewLine}{stderr.Trim()}",
+                ScdlErrorCode.MuxerFailed);
         }
     }
 }
