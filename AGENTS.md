@@ -131,3 +131,29 @@ imperative lowercase subject. A body when the change needs a why.
 `README.md` is generated from `README.source.md` by MarkdownSnippets during the build. Edit the source, never the
 output. Code blocks come from real files through `snippet:` references so the documented bitrate ladder cannot drift
 from the code that implements it.
+
+## Instructions for agents
+
+This file is the always-on part. Task-specific procedures live in `.agents/skills`, one folder per skill with a
+`SKILL.md` carrying `name` and `description` frontmatter - the layout `microsoft/aspire` and `foxminchan/BookWorm` use.
+`CLAUDE.md` and `.github/copilot-instructions.md` both forward here, so every assistant reads one set of rules.
+
+| Skill | Read it before |
+|-----------------------|------------------------------------------------------------------------------|
+| `soundcloud-ladder`   | touching `Scdl.Core/Audio`, or answering anything about 320 kbps or "lossless" |
+| `errors-and-exit-codes` | adding a way for something to go wrong                                      |
+| `tunit-testing`       | adding or changing a test                                                     |
+| `publish-native-aot`  | publishing, or adding a dependency that reflects                              |
+| `analyzer-gates`      | an analyzer blocks the build                                                  |
+
+MCP servers are declared twice on purpose: `.mcp.json` for Claude Code and anything else reading the standard
+project-scoped format, `.vscode/mcp.json` for VS Code, which only reads its own. Both point at the same Microsoft Learn
+endpoint; keep them in step.
+
+`claude-memory/` is committed too, so the working notes follow the repo to another machine. It is the long form: the
+reasoning behind each decision, the alternatives that were rejected, and how a trap was actually diagnosed - including
+the two probes that proved nothing. Read `claude-memory/traps` before touching the build configuration and
+`claude-memory/domain` before touching anything that talks to SoundCloud.
+
+Because it is committed, it holds no secrets, no tokens and no key fingerprints. A rule every contributor must follow
+belongs in this file or in a skill; `claude-memory/` holds the **why**, not the rule.

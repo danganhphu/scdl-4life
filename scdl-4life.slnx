@@ -15,10 +15,19 @@
         <File Path="Directory.Build.props" />
         <File Path="Directory.Packages.props" />
         <File Path=".config/dotnet-tools.json" />
+        <File Path=".mcp.json" />
         <File Path="AGENTS.md" />
         <File Path="CLAUDE.md" />
         <File Path="global.json" />
         <File Path="nuget.config" />
         <File Path="README.source.md" />
+    </Folder>
+    <Folder Name="/_solution items/agents/">
+        <File Path=".agents/README.md" />
+        <File Path=".agents/skills/analyzer-gates/SKILL.md" />
+        <File Path=".agents/skills/errors-and-exit-codes/SKILL.md" />
+        <File Path=".agents/skills/publish-native-aot/SKILL.md" />
+        <File Path=".agents/skills/soundcloud-ladder/SKILL.md" />
+        <File Path=".agents/skills/tunit-testing/SKILL.md" />
     </Folder>
 </Solution>
