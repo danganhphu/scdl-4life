@@ -1,0 +1,107 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build the release from, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish ${{ matrix.runtime }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            runtime: win-x64
+          - os: ubuntu-latest
+            runtime: linux-x64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # ILC links with clang on Linux and needs the objects it links against.
+      # Without these the publish fails at the link step, not at compile.
+      - name: Install the Native AOT prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      # build.ps1 imports the MSVC environment itself on Windows and falls back
+      # to a trimmed self-contained binary when no native toolchain is present,
+      # which is why the upload globs both output folders.
+      - name: Publish
+        shell: pwsh
+        run: ./build.ps1 Publish -Runtime ${{ matrix.runtime }}
+
+      - name: Name the archive
+        shell: pwsh
+        run: |
+          $version = '${{ inputs.tag || github.ref_name }}'.TrimStart('v')
+          $binary = Get-ChildItem -Path artifacts -Recurse -Include 'scdl', 'scdl.exe' | Select-Object -First 1
+
+          if (-not $binary)
+          {
+              throw 'Publish produced no binary.'
+          }
+
+          $staging = Join-Path 'artifacts' 'release'
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+
+          Copy-Item $binary.FullName -Destination $staging
+          Copy-Item 'README.md', 'LICENSE' -Destination $staging -ErrorAction SilentlyContinue
+
+          $archive = Join-Path 'artifacts' "scdl-$version-${{ matrix.runtime }}.zip"
+          Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $archive -Force
+
+          "archive=$archive" >> $env:GITHUB_OUTPUT
+        id: package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scdl-${{ matrix.runtime }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+  release:
+    name: draft the release
+    needs: publish
+    runs-on: ubuntu-latest
+
+    # The only job that writes. Kept separate so the build jobs stay read-only.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # Drafted rather than published: the release notes are worth reading
+      # before anyone downloads a binary that claims to know what SoundCloud
+      # actually serves.
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          draft: true
+          generate_release_notes: true
+          files: artifacts/*.zip

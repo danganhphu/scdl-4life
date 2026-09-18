@@ -9,6 +9,15 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+
+    # Dependabot's default title is "Bump X from 1 to 2", which the
+    # conventional-commits workflow rejects. Setting the prefix here is the
+    # native fix; a workflow that renames titles after the fact is not needed.
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+
     groups:
       microsoft-extensions:
         patterns:
@@ -21,8 +30,14 @@ updates:
           - TUnit*
           - Moq
           - Bogus
+      spectre:
+        patterns:
+          - Spectre.Console*
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    commit-message:
+      prefix: ci
+      include: scope

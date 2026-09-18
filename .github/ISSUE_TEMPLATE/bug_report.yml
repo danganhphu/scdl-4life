@@ -1,0 +1,71 @@
+name: Bug report
+description: Something behaves differently from what it says it does.
+labels: [bug]
+
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Before filing: run `scdl formats <url>` and paste the table. It shows
+        what SoundCloud offered for that exact track, which answers most reports
+        outright.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, and what came back.
+      placeholder: |
+        scdl get https://soundcloud.com/artist/track --format aac_256k
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: formats
+    attributes:
+      label: Output of `scdl formats <url>`
+      description: The rungs SoundCloud offered. Paste the whole table.
+      render: text
+
+  - type: input
+    id: exit-code
+    attributes:
+      label: Exit code
+      description: >-
+        `$LASTEXITCODE` in PowerShell, `echo $?` in bash. 2 means the URL or
+        options were wrong, 3 nothing playable, 4 credentials, 5 a missing
+        dependency such as ffmpeg.
+      placeholder: "1"
+
+  - type: textarea
+    id: verbose
+    attributes:
+      label: Output with `--verbose`
+      description: >-
+        Goes to stderr, so `scdl get <url> --verbose 2>&1`. Redact the OAuth
+        token if you passed one - it is a live credential.
+      render: text
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0, or the commit sha of a local build
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+    validations:
+      required: true

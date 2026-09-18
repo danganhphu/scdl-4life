@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: A track downloads at 128 kbps
+    url: https://github.com/danganhphu/scdl-4life#there-is-no-320-kbps
+    about: >-
+      Expected. SoundCloud stores no 320 kbps rung. Above 128 kbps there are only
+      aac_256k with a Go+ token and the uploader's original master. Run
+      `scdl formats <url>` to see what that track actually offers.

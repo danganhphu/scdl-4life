@@ -1,0 +1,60 @@
+name: conventional-commits
+
+# pull_request, not pull_request_target. This job never checks the branch out
+# and only reads the title, so it has no reason to run with the base repo's
+# write-capable token.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: pr title
+    runs-on: ubuntu-latest
+
+    steps:
+      # Deliberately a regex rather than a third-party action. The rule is six
+      # lines of grep, and a marketplace action here would be a supply chain
+      # dependency with write-ish context for the sake of six lines.
+      - name: Check the title is a conventional commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+
+          types='build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test'
+
+          if ! printf '%s' "$TITLE" | grep -Eq "^($types)(\([a-z0-9._-]+\))?!?: .+"; then
+            echo "::error::PR title is not a Conventional Commit: $TITLE"
+            echo "Expected <type>(<optional scope>): <description>, where type is one of:"
+            echo "  $types"
+            exit 1
+          fi
+
+          # The subject is a description, not a sentence: no capital, no period.
+          subject="${TITLE#*: }"
+
+          if printf '%s' "$subject" | grep -Eq '^[A-Z]'; then
+            echo "::error::Start the description in lower case: $subject"
+            exit 1
+          fi
+
+          if printf '%s' "$subject" | grep -Eq '\.$'; then
+            echo "::error::Drop the trailing period: $subject"
+            exit 1
+          fi
+
+          # ASCII punctuation only, the same rule the code is held to.
+          if printf '%s' "$TITLE" | grep -Pq '[\x{2010}-\x{2015}\x{2018}-\x{201F}\x{2026}]'; then
+            echo "::error::Use ASCII punctuation: no em dash, en dash, curly quotes or ellipsis character."
+            exit 1
+          fi
+
+          echo "OK: $TITLE"
