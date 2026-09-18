@@ -22,16 +22,16 @@ public static class TranscodingCatalog
     private static readonly FrozenDictionary<string, AudioRung> ByPreset = new AudioRung[]
     {
         // begin-snippet: transcoding-ladder
-        new("aac_256k", 256, AudioCodec.Aac, ".m4a", RequiresGoPlus: true),
-        new("abr_hq", 256, AudioCodec.Aac, ".m4a", RequiresGoPlus: true),
-        new("aac_160k", 160, AudioCodec.Aac, ".m4a", RequiresGoPlus: false),
-        new("abr_sq", 160, AudioCodec.Aac, ".m4a", RequiresGoPlus: false),
-        new("mp3_1_0", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
-        new("mp3_0_1", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
-        new("mp3_0_0", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
-        new("mp3_standard", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
-        new("aac_96k", 96, AudioCodec.Aac, ".m4a", RequiresGoPlus: false),
-        new("opus_0_0", 64, AudioCodec.Opus, ".ogg", RequiresGoPlus: false),
+        new("aac_256k", 256, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: true),
+        new("abr_hq", 256, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: true),
+        new("aac_160k", 160, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: false),
+        new("abr_sq", 160, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: false),
+        new("mp3_1_0", 128, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false),
+        new("mp3_0_1", 128, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false),
+        new("mp3_0_0", 128, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false),
+        new("mp3_standard", 128, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false),
+        new("aac_96k", 96, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: false),
+        new("opus_0_0", 64, AudioCodec.Opus, AudioFileExtensions.Ogg, RequiresGoPlus: false),
 
         // end-snippet
     }.ToFrozenDictionary(rung => rung.Preset, StringComparer.OrdinalIgnoreCase);
@@ -78,21 +78,21 @@ public static class TranscodingCatalog
 
         if (mime.Contains("mp4", StringComparison.OrdinalIgnoreCase))
         {
-            return new(preset, 0, AudioCodec.Aac, ".m4a", RequiresGoPlus: false);
+            return new(preset, 0, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: false);
         }
 
         if (mime.Contains("mpeg", StringComparison.OrdinalIgnoreCase))
         {
-            return new(preset, 0, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false);
+            return new(preset, 0, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false);
         }
 
         if (mime.Contains("ogg", StringComparison.OrdinalIgnoreCase) ||
             mime.Contains("opus", StringComparison.OrdinalIgnoreCase))
         {
-            return new(preset, 0, AudioCodec.Opus, ".ogg", RequiresGoPlus: false);
+            return new(preset, 0, AudioCodec.Opus, AudioFileExtensions.Ogg, RequiresGoPlus: false);
         }
 
-        return new(preset, 0, AudioCodec.Unknown, ".bin", RequiresGoPlus: false);
+        return new(preset, 0, AudioCodec.Unknown, AudioFileExtensions.Unidentified, RequiresGoPlus: false);
     }
 
     public static DeliveryProtocol ParseProtocol(string? protocol)

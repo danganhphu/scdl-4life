@@ -17,16 +17,16 @@ SoundCloud does not store a 320 kbps MP3. This is the whole ladder, lifted strai
 <!-- snippet: transcoding-ladder -->
 <a id='snippet-transcoding-ladder'></a>
 ```cs
-new("aac_256k", 256, AudioCodec.Aac, ".m4a", RequiresGoPlus: true),
-new("abr_hq", 256, AudioCodec.Aac, ".m4a", RequiresGoPlus: true),
-new("aac_160k", 160, AudioCodec.Aac, ".m4a", RequiresGoPlus: false),
-new("abr_sq", 160, AudioCodec.Aac, ".m4a", RequiresGoPlus: false),
-new("mp3_1_0", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
-new("mp3_0_1", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
-new("mp3_0_0", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
-new("mp3_standard", 128, AudioCodec.Mp3, ".mp3", RequiresGoPlus: false),
-new("aac_96k", 96, AudioCodec.Aac, ".m4a", RequiresGoPlus: false),
-new("opus_0_0", 64, AudioCodec.Opus, ".ogg", RequiresGoPlus: false),
+new("aac_256k", 256, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: true),
+new("abr_hq", 256, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: true),
+new("aac_160k", 160, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: false),
+new("abr_sq", 160, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: false),
+new("mp3_1_0", 128, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false),
+new("mp3_0_1", 128, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false),
+new("mp3_0_0", 128, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false),
+new("mp3_standard", 128, AudioCodec.Mp3, AudioFileExtensions.Mp3, RequiresGoPlus: false),
+new("aac_96k", 96, AudioCodec.Aac, AudioFileExtensions.M4a, RequiresGoPlus: false),
+new("opus_0_0", 64, AudioCodec.Opus, AudioFileExtensions.Ogg, RequiresGoPlus: false),
 ```
 <sup><a href='/src/Scdl.Core/Audio/TranscodingCatalog.cs#L24-L36' title='Snippet source file'>snippet source</a> | <a href='#snippet-transcoding-ladder' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->

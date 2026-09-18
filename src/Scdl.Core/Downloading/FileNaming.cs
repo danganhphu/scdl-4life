@@ -1,6 +1,6 @@
 using System.Buffers;
-using System.Collections.Frozen;
 using System.Text;
+using Scdl.Core.Audio;
 using Scdl.Core.SoundCloud.Models;
 
 namespace Scdl.Core.Downloading;
@@ -16,21 +16,6 @@ public static class FileNaming
 
     private static readonly SearchValues<char> InvalidCharacters =
         SearchValues.Create(new string(Path.GetInvalidFileNameChars()) + ":*?\"<>|");
-
-    private static readonly FrozenSet<string> AudioExtensions = new[]
-    {
-        ".mp3",
-        ".m4a",
-        ".mp4",
-        ".aac",
-        ".wav",
-        ".flac",
-        ".ogg",
-        ".opus",
-        ".aiff",
-        ".aif",
-        ".wma",
-    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Collapses anything unsafe into single spaces and trims to a sane length.</summary>
     public static string Sanitize(string raw)
@@ -89,7 +74,7 @@ public static class FileNaming
     {
         var extension = Path.GetExtension(title);
 
-        return extension.Length > 1 && AudioExtensions.Contains(extension)
+        return extension.Length > 1 && AudioFileExtensions.All.Contains(extension)
                    ? title[..^extension.Length].TrimEnd()
                    : title;
     }
@@ -112,13 +97,17 @@ public static class FileNaming
 
         return response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() switch
         {
-            "audio/wav" or "audio/x-wav" or "audio/wave" => ".wav",
-            "audio/flac" or "audio/x-flac" => ".flac",
-            "audio/aiff" or "audio/x-aiff" => ".aiff",
-            "audio/mpeg" or "audio/mp3" => ".mp3",
-            "audio/mp4" or "audio/x-m4a" => ".m4a",
-            "audio/ogg" => ".ogg",
-            _ => ".mp3",
+            "audio/wav" or "audio/x-wav" or "audio/wave" => AudioFileExtensions.Wav,
+            "audio/flac" or "audio/x-flac" => AudioFileExtensions.Flac,
+            "audio/aiff" or "audio/x-aiff" => AudioFileExtensions.Aiff,
+            "audio/mpeg" or "audio/mp3" => AudioFileExtensions.Mp3,
+            "audio/mp4" or "audio/x-m4a" => AudioFileExtensions.M4a,
+            "audio/ogg" => AudioFileExtensions.Ogg,
+
+            // Not Unidentified: an original master with an unhelpful Content-Type
+            // is overwhelmingly an MP3, and ".bin" would leave a file no player
+            // opens by double-clicking.
+            _ => AudioFileExtensions.Mp3,
         };
     }
 
