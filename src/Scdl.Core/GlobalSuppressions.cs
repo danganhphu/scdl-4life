@@ -1,8 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
+
 // Assembly-level analyzer suppressions for Scdl.Core.
 //
-// Empty on purpose. It exists so that the first suppression this project ever
-// needs lands somewhere a reviewer will see, instead of as an inline
-// #pragma warning disable that nobody notices again.
+// It exists so that a suppression lands somewhere a reviewer will see, instead
+// of as an inline #pragma warning disable that nobody notices again.
 //
 // Reach for these in order, and only move down when the one above genuinely
 // does not apply:
@@ -29,4 +30,14 @@
 // A Justification of "false positive" or "by design" is not a justification.
 // Say what the code does that the rule cannot see.
 
-
+[assembly: SuppressMessage(
+    "Naming",
+    "CA1708:Identifiers should differ by more than case",
+    Justification =
+        "The two colliding names are the grouping types the compiler emits for a C# 14 extension block, " +
+        "one per receiver. They are not callable from any language, so the case-insensitive collision " +
+        "CA1708 guards against cannot happen. Splitting the class to satisfy the rule would scatter two " +
+        "operations on the same ladder across two files. Re-check once the analyzer understands extension " +
+        "blocks.",
+    Scope = "type",
+    Target = "~T:Scdl.Core.SoundCloud.TrackStreams")]

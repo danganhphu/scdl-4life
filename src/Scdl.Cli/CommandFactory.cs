@@ -288,7 +288,7 @@ internal static class CommandFactory
         {
             var track = tracks[i];
             renderer.TrackHeading(track, i + 1, tracks.Count);
-            renderer.LadderTable(track, TrackStreams.Rank(track), oauthToken is { Length: > 0 });
+            renderer.LadderTable(track, track.RankStreams(), oauthToken is { Length: > 0 });
         }
 
         return ScdlExitCode.Success;

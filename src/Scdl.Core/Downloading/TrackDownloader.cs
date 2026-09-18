@@ -171,7 +171,7 @@ internal sealed class TrackDownloader(HttpClient http,
     /// </exception>
     private static IReadOnlyList<StreamOption> SelectCandidates(Track track, string? preset)
     {
-        var ranked = TrackStreams.Rank(track);
+        var ranked = track.RankStreams();
 
         if (ranked.Count is 0)
         {
@@ -185,7 +185,7 @@ internal sealed class TrackDownloader(HttpClient http,
             return ranked;
         }
 
-        if (TrackStreams.TryFindPreset(ranked, preset, out var match))
+        if (ranked.TryFindPreset(preset, out var match))
         {
             return [match];
         }

@@ -23,7 +23,7 @@ public sealed class TrackStreamsTests
     {
         var track = TrackWith(Rung("opus_0_0"), Rung("mp3_1_0"), Rung("aac_256k"));
 
-        var ranked = TrackStreams.Rank(track);
+        var ranked = track.RankStreams();
 
         await Assert.That(ranked.Count).IsEqualTo(3);
         await Assert.That(ranked[0].Rung.Preset).IsEqualTo("aac_256k");
@@ -40,7 +40,7 @@ public sealed class TrackStreamsTests
     {
         var track = TrackWith(Rung("aac_256k", snipped: true), Rung("mp3_1_0"));
 
-        var ranked = TrackStreams.Rank(track);
+        var ranked = track.RankStreams();
 
         await Assert.That(ranked[0].Rung.Preset).IsEqualTo("mp3_1_0");
         await Assert.That(ranked[1].Transcoding.Snipped).IsTrue();
@@ -51,7 +51,7 @@ public sealed class TrackStreamsTests
     {
         var track = TrackWith(Rung("mp3_1_0"), new Transcoding { Preset = "aac_256k", Url = null });
 
-        var ranked = TrackStreams.Rank(track);
+        var ranked = track.RankStreams();
 
         await Assert.That(ranked.Count).IsEqualTo(1);
         await Assert.That(ranked[0].Rung.Preset).IsEqualTo("mp3_1_0");
@@ -60,7 +60,9 @@ public sealed class TrackStreamsTests
     [Test]
     public async Task Rank_returns_empty_when_there_is_no_media_block()
     {
-        var ranked = TrackStreams.Rank(new Track { Id = 1 });
+        var track = new Track { Id = 1 };
+
+        var ranked = track.RankStreams();
 
         await Assert.That(ranked.Count).IsEqualTo(0);
     }
@@ -70,7 +72,7 @@ public sealed class TrackStreamsTests
     {
         var track = TrackWith(Rung("mp3_0_0", protocol: "progressive"));
 
-        var ranked = TrackStreams.Rank(track);
+        var ranked = track.RankStreams();
 
         await Assert.That(ranked[0].Protocol).IsEqualTo(DeliveryProtocol.Progressive);
     }
@@ -78,9 +80,9 @@ public sealed class TrackStreamsTests
     [Test]
     public async Task TryFindPreset_matches_on_a_prefix()
     {
-        var ranked = TrackStreams.Rank(TrackWith(Rung("aac_256k"), Rung("mp3_1_0")));
+        var ranked = TrackWith(Rung("aac_256k"), Rung("mp3_1_0")).RankStreams();
 
-        var found = TrackStreams.TryFindPreset(ranked, "aac", out var match);
+        var found = ranked.TryFindPreset("aac", out var match);
 
         await Assert.That(found).IsTrue();
         await Assert.That(match.Rung.Kbps).IsEqualTo(256);
@@ -89,9 +91,9 @@ public sealed class TrackStreamsTests
     [Test]
     public async Task TryFindPreset_reports_a_miss_rather_than_throwing()
     {
-        var ranked = TrackStreams.Rank(TrackWith(Rung("mp3_1_0")));
+        var ranked = TrackWith(Rung("mp3_1_0")).RankStreams();
 
-        var found = TrackStreams.TryFindPreset(ranked, "flac", out _);
+        var found = ranked.TryFindPreset("flac", out _);
 
         await Assert.That(found).IsFalse();
     }
