@@ -53,6 +53,19 @@ The binary is self-contained, so **there is nothing else to install** - no .NET 
 Windows will show a SmartScreen warning the first time, because the executable is not code signed. *More info* then
 *Run anyway*. If that is not acceptable, build it yourself - it is one command, see [Build](#build).
 
+### Verifying a download
+
+Every release carries `SHA256SUMS.txt` and a build provenance attestation.
+
+```powershell
+(Get-FileHash .\scdl-0.1.0-win-x64.zip -Algorithm SHA256).Hash   # compare against SHA256SUMS.txt
+gh attestation verify .\scdl-0.1.0-win-x64.zip --repo danganhphu/scdl-4life
+```
+
+The attestation is a signed record, in a public transparency log, that those exact bytes came out of this repository's
+release workflow at a named commit. It is not code signing and it will not stop the SmartScreen warning - that needs a
+certificate somebody pays for every year - but it is checkable, which a certificate alone is not.
+
 ## Use
 
 ```powershell

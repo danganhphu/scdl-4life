@@ -55,6 +55,27 @@
        PrivateAssets="all" plus the right IncludeAssets, so there is nothing to
        restate - or get wrong - here. -->
 
+  <!-- MinVer reads the version off the nearest `v*` tag. Nothing here declares a
+       version number, because a number written in a file drifts from the tag
+       that was actually released: the version flag reported 1.0.0 for months
+       purely because that is the SDK's default and nobody had set one.
+
+       Two consequences worth knowing:
+       * Untagged builds report 0.0.0-alpha.0.N, which is honest. They are not
+         a release.
+       * A shallow clone has no tags, so MinVer warns and the build fails on it.
+         Every checkout in .github/workflows sets fetch-depth to 0.
+
+       Note the bullets are asterisks, not hyphens. XML forbids a double hyphen
+       inside a comment, and MSBuild answers a malformed props file by dropping
+       it silently: TargetFramework then goes missing and the build fails with
+       "Ahead-of-time compilation is not supported for the target framework",
+       which points nowhere near the comment that caused it. -->
+  <PropertyGroup Label="Versioning">
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerDefaultPreReleaseIdentifiers>alpha.0</MinVerDefaultPreReleaseIdentifiers>
+  </PropertyGroup>
+
   <PropertyGroup Label="Packaging">
     <Authors>danganhphu</Authors>
     <RepositoryUrl>https://github.com/danganhphu/scdl-4life</RepositoryUrl>

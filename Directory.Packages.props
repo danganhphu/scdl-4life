@@ -36,6 +36,13 @@
     <GlobalPackageReference Include="Roslynator.Formatting.Analyzers" Version="5.0.0" />
   </ItemGroup>
 
+  <!-- Derives the version from the nearest git tag, so there is exactly one
+       place a version is declared and it is the thing that triggers a release.
+       Build-time only, like the analyzers above. -->
+  <ItemGroup Label="Versioning">
+    <GlobalPackageReference Include="MinVer" Version="8.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Docs">
     <PackageVersion Include="MarkdownSnippets.MsBuild" Version="28.4.2" />
   </ItemGroup>
