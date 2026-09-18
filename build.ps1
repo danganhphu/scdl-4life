@@ -26,17 +26,26 @@
 #>
 [CmdletBinding()]
 param(
+    # Task is the only positional parameter, on purpose. Without the explicit
+    # positions below, Configuration and Runtime were positional too, so
+    # `./build.ps1 Run -- formats "<url>"` bound "formats" to Configuration and
+    # the URL to Runtime, leaving RemainingArguments empty and the CLI with no
+    # command at all. The documented invocation silently did nothing useful.
+    [Parameter(Position = 0)]
     [ValidateSet('Restore', 'Build', 'Test', 'Coverage', 'Publish', 'Run', 'All')]
     [string]$Task = 'Build',
 
+    [Parameter()]
     [string]$Configuration = 'Release',
 
+    [Parameter()]
     [string]$Runtime = 'win-x64',
 
+    [Parameter()]
     [switch]$NoAot,
 
-    # Anything after the known parameters is forwarded to the CLI by the Run task.
-    [Parameter(ValueFromRemainingArguments = $true)]
+    # Everything after the task is forwarded to the CLI by the Run task.
+    [Parameter(Position = 1, ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArguments
 )
 
