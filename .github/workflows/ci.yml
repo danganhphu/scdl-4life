@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: |
+          dotnet tool restore
+          dotnet restore scdl-4life.slnx
+
+      # Directory.Build.props turns on ContinuousIntegrationBuild when CI is set,
+      # which GitHub does for every step. Analyzer findings are errors here, so a
+      # warning-free build is the actual gate.
+      - name: Build
+        run: dotnet build scdl-4life.slnx -c Release --no-restore
+
+      # MTP mode wants --solution; a bare positional path is a VSTest-mode habit.
+      - name: Test
+        run: dotnet test --solution scdl-4life.slnx -c Release --no-build
+
+  publish:
+    name: publish win-x64
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # build.ps1 imports the MSVC environment itself, so Native AOT links here.
+      # It falls back to a trimmed self-contained binary if the toolchain is ever
+      # missing, which is why the upload globs both output folders.
+      - name: Publish
+        shell: pwsh
+        run: ./build.ps1 Publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scdl-win-x64
+          path: artifacts/*/scdl.exe
+          if-no-files-found: error

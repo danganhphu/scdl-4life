@@ -11,14 +11,16 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 
-    <!-- Nullability is the compiler warning class worth failing a build over.
-         Analyzer findings are escalated separately below, so a future analyzer
-         bump cannot break an unrelated build.
-         Note this is WarningsAsErrors, which takes a list of warning IDs plus
-         the special token "nullable" - not TreatWarningsAsErrors, which is the
-         boolean one. Writing <WarningsAsErrors>true</WarningsAsErrors> parses
-         "true" as a warning ID that does not exist and escalates nothing. -->
-    <WarningsAsErrors>nullable</WarningsAsErrors>
+    <!-- Every warning is an error, the way microsoft/aspire does it. This is the
+         boolean property; the similarly named WarningsAsErrors takes a LIST of
+         warning IDs (plus the token "nullable"), so <WarningsAsErrors>true</...>
+         silently escalates nothing because "true" is not a warning ID. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- The one class of warning that arrives from outside the code: a new CVE
+         advisory against a transitive package would otherwise break an unrelated
+         build the morning it is published. They stay visible as warnings. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
 
     <!-- On by default for every project, including any added later. Without it
          the compiler never binds doc comments, so the doc-comment analyzers are
@@ -31,9 +33,13 @@
   <PropertyGroup Label="CodeAnalysis">
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>Recommended</AnalysisMode>
+
+    <!-- CodeAnalysisTreatWarningsAsErrors is deliberately absent: it only covers
+         CA rules, and TreatWarningsAsErrors above already covers everything. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
   </PropertyGroup>
 
   <PropertyGroup Label="Aot">

@@ -1,35 +1,43 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Build, test and publish scdl.
+    The build engine for scdl. Every other script in the root is a thin wrapper
+    over this one.
 
 .DESCRIPTION
     Native AOT needs the MSVC linker. The .NET SDK finds it through vswhere by
     asking for the component id Microsoft.VisualStudio.Component.VC.Tools.x86.x64,
     which Visual Studio 2026 (v18) does not report even when the toolchain is
-    installed. This script imports the VC environment itself so the publish
-    works regardless, and falls back to a trimmed self-contained build when no
-    native toolchain exists at all.
+    installed, and v18 ships vcvars64.bat without the older vcvarsall.bat. This
+    script probes both layouts and imports the environment itself, falling back
+    to a trimmed self-contained publish when no native toolchain exists at all.
 
 .PARAMETER Task
-    Build (default), Test, Publish, or All.
+    Restore, Build (default), Test, Coverage, Publish, Run, or All.
 
 .PARAMETER NoAot
     Skip Native AOT and publish trimmed self-contained instead.
 
 .EXAMPLE
     ./build.ps1 All
+
+.EXAMPLE
+    ./build.ps1 Run -- formats "https://soundcloud.com/artist/track"
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('Build', 'Test', 'Publish', 'All')]
+    [ValidateSet('Restore', 'Build', 'Test', 'Coverage', 'Publish', 'Run', 'All')]
     [string]$Task = 'Build',
 
     [string]$Configuration = 'Release',
 
     [string]$Runtime = 'win-x64',
 
-    [switch]$NoAot
+    [switch]$NoAot,
+
+    # Anything after the known parameters is forwarded to the CLI by the Run task.
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArguments
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,56 +46,72 @@ $RepoRoot = $PSScriptRoot
 $Solution = Join-Path $RepoRoot 'scdl-4life.slnx'
 $CliProject = Join-Path $RepoRoot 'src/Scdl.Cli/Scdl.Cli.csproj'
 $ArtifactsRoot = Join-Path $RepoRoot 'artifacts'
+$CoverageRoot = Join-Path $ArtifactsRoot 'coverage'
 
-function Write-Step([string]$Message) {
+function Write-Step([string]$Message)
+{
     Write-Host ''
     Write-Host "==> $Message" -ForegroundColor Cyan
 }
 
+function Assert-ExitCode([string]$What)
+{
+    if ($LASTEXITCODE -ne 0)
+    {
+        throw "$What failed with exit code $LASTEXITCODE."
+    }
+}
+
 <#
     Locates a script that sets up the MSVC build environment, and returns the
-    command line that invokes it.
-
-    Two wrinkles are handled here. The SDK asks vswhere for the component id
-    Microsoft.VisualStudio.Component.VC.Tools.x86.x64, which Visual Studio 2026
-    does not report even with the toolchain installed, so that query is only the
-    first guess. And Visual Studio 2026 ships the per architecture vcvars64.bat
-    without the older vcvarsall.bat, so both layouts are probed.
+    command line that invokes it. Two layouts exist: Visual Studio 2026 ships
+    one script per architecture (vcvars64.bat), earlier versions ship a single
+    vcvarsall.bat that takes the architecture as an argument.
 #>
-function Find-VcEnvironmentCommand([string]$TargetRuntime) {
+function Find-VcEnvironmentCommand([string]$TargetRuntime)
+{
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 
-    if (-not (Test-Path $vswhere)) {
+    if (-not (Test-Path $vswhere))
+    {
         return $null
     }
 
     # The vcvarsall argument and the per architecture script name do not agree:
     # x64 is passed as "x64" but its script is vcvars64.bat, not vcvarsx64.bat.
-    $architecture, $scriptName = switch -Wildcard ($TargetRuntime) {
-        '*-arm64' { 'arm64', 'vcvarsarm64.bat' }
-        '*-x86' { 'x86', 'vcvars32.bat' }
-        default { 'x64', 'vcvars64.bat' }
+    $architecture, $scriptName = switch -Wildcard ($TargetRuntime)
+    {
+        '*-arm64' {
+            'arm64', 'vcvarsarm64.bat'
+        }
+        '*-x86' {
+            'x86', 'vcvars32.bat'
+        }
+        default {
+            'x64', 'vcvars64.bat'
+        }
     }
 
     $candidates = @()
     $candidates += & $vswhere -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-        -latest -format value -property installationPath 2>$null
-    $candidates += & $vswhere -products * -all -prerelease -format value -property installationPath 2>$null
+        -latest -format value -property installationPath 2> $null
+    $candidates += & $vswhere -products * -all -prerelease -format value -property installationPath 2> $null
 
-    foreach ($path in ($candidates | Where-Object { $_ } | Select-Object -Unique)) {
+    foreach ($path in ($candidates | Where-Object { $_ } | Select-Object -Unique))
+    {
         $buildDirectory = Join-Path $path 'VC/Auxiliary/Build'
 
-        # Visual Studio 2026 layout: one script per architecture.
         $perArchitecture = Join-Path $buildDirectory $scriptName
 
-        if (Test-Path $perArchitecture) {
+        if (Test-Path $perArchitecture)
+        {
             return @{ Script = $perArchitecture; Arguments = '' }
         }
 
-        # Visual Studio 2022 and earlier: one script taking the architecture.
         $vcvarsAll = Join-Path $buildDirectory 'vcvarsall.bat'
 
-        if (Test-Path $vcvarsAll) {
+        if (Test-Path $vcvarsAll)
+        {
             return @{ Script = $vcvarsAll; Arguments = $architecture }
         }
     }
@@ -99,77 +123,133 @@ function Find-VcEnvironmentCommand([string]$TargetRuntime) {
     Runs the vcvars script in a child cmd and copies the resulting environment
     into this session, which is the only reliable way to inherit it.
 #>
-function Import-VcEnvironment([hashtable]$Command) {
-    Write-Step "Importing MSVC environment from $(Split-Path -Leaf $Command.Script)"
+function Import-VcEnvironment([hashtable]$Command)
+{
+    $scriptName = Split-Path -Leaf $Command.Script
 
-    $output = & cmd.exe /c "call `"$($Command.Script)`" $($Command.Arguments) > nul 2>&1 && set"
+    Write-Step "Importing MSVC environment from $scriptName"
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "$(Split-Path -Leaf $Command.Script) failed with exit code $LASTEXITCODE."
-    }
+    $output = & cmd.exe /c "call `"$( $Command.Script )`" $( $Command.Arguments ) > nul 2>&1 && set"
 
-    foreach ($line in $output) {
-        if ($line -match '^([^=]+)=(.*)$') {
-            Set-Item -Path "env:$($Matches[1])" -Value $Matches[2]
+    Assert-ExitCode $scriptName
+
+    foreach ($line in $output)
+    {
+        if ($line -match '^([^=]+)=(.*)$')
+        {
+            Set-Item -Path "env:$( $Matches[1] )" -Value $Matches[2]
         }
     }
 }
 
-function Invoke-Build {
-    Write-Step "Building $Configuration"
-    dotnet build $Solution -c $Configuration
+function Invoke-Restore
+{
+    Write-Step 'Restoring tools and packages'
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "Build failed with exit code $LASTEXITCODE."
-    }
+    dotnet tool restore
+    Assert-ExitCode 'Tool restore'
+
+    dotnet restore $Solution
+    Assert-ExitCode 'Restore'
 }
 
-function Invoke-Test {
+function Invoke-Build
+{
+    Write-Step "Building $Configuration"
+
+    dotnet build $Solution -c $Configuration
+    Assert-ExitCode 'Build'
+}
+
+function Invoke-Test
+{
     Write-Step 'Running tests'
 
-    # TUnit runs on Microsoft.Testing.Platform. Invoking the produced host
-    # directly sidesteps the SDK's VSTest bridge entirely.
-    $testHost = Get-ChildItem -Path (Join-Path $RepoRoot 'tests') -Recurse -Filter 'Scdl.Core.Tests.exe' |
-        Where-Object { $_.FullName -like "*$Configuration*" } |
-        Select-Object -First 1
+    # The "test" section in global.json selects the Microsoft.Testing.Platform
+    # runner, so plain `dotnet test` drives TUnit. MTP mode wants the solution
+    # behind --solution; passing it positionally is a VSTest-mode habit and
+    # fails with "should be via '--solution'".
+    dotnet test --solution $Solution -c $Configuration --no-build
+    Assert-ExitCode 'Tests'
+}
 
-    if (-not $testHost) {
-        throw "Test host not found. Run './build.ps1 Build' first."
-    }
+function Invoke-Coverage
+{
+    Write-Step 'Collecting coverage'
 
-    & $testHost.FullName
+    New-Item -ItemType Directory -Force -Path $CoverageRoot | Out-Null
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "Tests failed with exit code $LASTEXITCODE."
+    $raw = Join-Path $CoverageRoot 'coverage.cobertura.xml'
+    $reportDirectory = Join-Path $CoverageRoot 'report'
+
+    # dotnet-coverage wraps the whole test run rather than relying on a
+    # collector the test platform has to know about, which keeps this working
+    # regardless of what the test SDK does with data collectors.
+    dotnet tool run dotnet-coverage collect `
+        --output $raw `
+        --output-format cobertura `
+        "dotnet test --solution $Solution -c $Configuration --no-build"
+
+    Assert-ExitCode 'Coverage collection'
+
+    dotnet tool run reportgenerator `
+        "-reports:$raw" `
+        "-targetdir:$reportDirectory" `
+        '-reporttypes:HtmlInline;TextSummary'
+
+    Assert-ExitCode 'Coverage report'
+
+    $summary = Join-Path $reportDirectory 'Summary.txt'
+
+    if (Test-Path $summary)
+    {
+        Write-Host ''
+        Get-Content $summary | Select-Object -First 20
     }
 }
 
-function Invoke-Publish {
+function Invoke-Publish
+{
+    # Plain if statements rather than if expressions. An if expression assigned
+    # inline, and especially one inside a string, is the construct every
+    # formatter explodes across half a screen; this shape cannot be made worse.
     $useAot = -not $NoAot
-    $vcEnvironment = if ($useAot) { Find-VcEnvironmentCommand -TargetRuntime $Runtime } else { $null }
+    $vcEnvironment = $null
 
-    if ($useAot -and -not $vcEnvironment) {
+    if ($useAot)
+    {
+        $vcEnvironment = Find-VcEnvironmentCommand -TargetRuntime $Runtime
+    }
+
+    if ($useAot -and -not $vcEnvironment)
+    {
         Write-Warning 'No MSVC toolchain found; falling back to a trimmed self-contained publish.'
         Write-Warning 'Install the "Desktop development with C++" workload to get a Native AOT binary.'
         $useAot = $false
     }
 
-    if ($useAot) {
+    if ($useAot)
+    {
         Import-VcEnvironment -Command $vcEnvironment
     }
 
-    $output = Join-Path $ArtifactsRoot $(if ($useAot) { 'aot' } else { 'trimmed' })
+    $outputFolder = 'trimmed'
+    $publishKind = 'trimmed self-contained'
 
-    Write-Step "Publishing $(if ($useAot) { 'Native AOT' } else { 'trimmed self-contained' }) to $output"
+    if ($useAot)
+    {
+        $outputFolder = 'aot'
+        $publishKind = 'Native AOT'
+    }
 
-    $arguments = @(
-        'publish', $CliProject
-        '-c', $Configuration
-        '-r', $Runtime
-        '-o', $output
-    )
+    $output = Join-Path $ArtifactsRoot $outputFolder
 
-    if (-not $useAot) {
+    Write-Step "Publishing $publishKind to $output"
+
+    $arguments = @('publish', $CliProject, '-c', $Configuration, '-r', $Runtime, '-o', $output)
+
+    if (-not $useAot)
+    {
         $arguments += @(
             '-p:PublishAot=false'
             '-p:PublishTrimmed=true'
@@ -179,24 +259,48 @@ function Invoke-Publish {
     }
 
     dotnet @arguments
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "Publish failed with exit code $LASTEXITCODE."
-    }
+    Assert-ExitCode 'Publish'
 
     $binary = Get-ChildItem -Path $output -Filter 'scdl.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
 
-    if ($binary) {
+    if ($binary)
+    {
         Write-Host ''
         Write-Host ("  {0}  ({1:N1} MB)" -f $binary.FullName, ($binary.Length / 1MB)) -ForegroundColor Green
     }
 }
 
-switch ($Task) {
-    'Build' { Invoke-Build }
-    'Test' { Invoke-Build; Invoke-Test }
-    'Publish' { Invoke-Build; Invoke-Publish }
-    'All' { Invoke-Build; Invoke-Test; Invoke-Publish }
+function Invoke-Run
+{
+    Write-Step 'Running scdl from source'
+
+    # The extra -- keeps the CLI's own options from being read by dotnet run.
+    dotnet run --project $CliProject -c $Configuration -- @RemainingArguments
+}
+
+switch ($Task)
+{
+    'Restore' {
+        Invoke-Restore
+    }
+    'Build' {
+        Invoke-Restore; Invoke-Build
+    }
+    'Test' {
+        Invoke-Restore; Invoke-Build; Invoke-Test
+    }
+    'Coverage' {
+        Invoke-Restore; Invoke-Build; Invoke-Coverage
+    }
+    'Publish' {
+        Invoke-Restore; Invoke-Build; Invoke-Publish
+    }
+    'Run' {
+        Invoke-Run
+    }
+    'All' {
+        Invoke-Restore; Invoke-Build; Invoke-Test; Invoke-Publish
+    }
 }
 
 Write-Host ''

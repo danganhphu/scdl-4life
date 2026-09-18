@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "powershell": {
+      "version": "7.6.6",
+      "commands": [
+        "pwsh"
+      ],
+      "rollForward": false
+    },
+    "dotnet-coverage": {
+      "version": "18.11.2",
+      "commands": [
+        "dotnet-coverage"
+      ],
+      "rollForward": false
+    },
+    "dotnet-reportgenerator-globaltool": {
+      "version": "5.5.11",
+      "commands": [
+        "reportgenerator"
+      ],
+      "rollForward": false
+    },
+    "roslynator.dotnet.cli": {
+      "version": "1.0.0",
+      "commands": [
+        "roslynator"
+      ],
+      "rollForward": false
+    },
+    "dotnet-outdated-tool": {
+      "version": "4.8.1",
+      "commands": [
+        "dotnet-outdated"
+      ],
+      "rollForward": false
+    }
+  }
+}

@@ -1,0 +1,28 @@
+version: 2
+
+updates:
+  # Central Package Management means every version lives in
+  # Directory.Packages.props, so Dependabot edits one file.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      microsoft-extensions:
+        patterns:
+          - Microsoft.Extensions.*
+      analyzers:
+        patterns:
+          - Roslynator.*
+      testing:
+        patterns:
+          - TUnit*
+          - Moq
+          - Bogus
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

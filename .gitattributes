@@ -1,6 +1,9 @@
-## Normalise line endings on the way into the repo. Everything is LF in git;
-## the working tree gets whatever the platform wants on checkout.
-* text=auto
+## LF everywhere, in the repo AND in the working tree. Plain `text=auto` would
+## leave the checkout to core.autocrlf, which is true on this machine, so the
+## editor would write the LF that .editorconfig asks for and git would hand back
+## CRLF on the next checkout - a phantom diff on every file, forever. The only
+## exception is further down: batch files, which genuinely want CRLF.
+* text=auto eol=lf
 
 ## Source
 *.cs        text diff=csharp
@@ -19,10 +22,14 @@
 *.slnx      text
 *.sln       text eol=crlf
 
-## Scripts: shells are picky about their own endings, so pin both directions.
-*.ps1       text eol=crlf
-*.psm1      text eol=crlf
-*.psd1      text eol=crlf
+## Scripts. These must agree with the end_of_line rules in .editorconfig, or
+## every save fights the checkout normalisation.
+## PowerShell is LF: pwsh reads either, and the scripts run on Linux in CI.
+## Batch is CRLF: cmd.exe can behave differently reading a label or a goto
+## target that ends with a bare LF.
+*.ps1       text eol=lf
+*.psm1      text eol=lf
+*.psd1      text eol=lf
 *.cmd       text eol=crlf
 *.bat       text eol=crlf
 *.sh        text eol=lf
