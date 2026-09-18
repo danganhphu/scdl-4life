@@ -18,79 +18,73 @@ public static class ScdlServiceCollectionExtensions
     /// <summary>A transfer runs as long as the file needs; the 100 second default would cut it off.</summary>
     private static readonly TimeSpan TransferTimeout = TimeSpan.FromMinutes(30);
 
-    public static IServiceCollection AddScdl(
-        this IServiceCollection services,
-        Action<SoundCloudOptions>? configure = null)
+    extension(IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(services);
-
-        var optionsBuilder = services.AddOptions<SoundCloudOptions>();
-
-        if (configure is not null)
+        public IServiceCollection AddScdl(Action<SoundCloudOptions>? configure = null)
         {
-            optionsBuilder.Configure(configure);
+            ArgumentNullException.ThrowIfNull(services);
+
+            var optionsBuilder = services.AddOptions<SoundCloudOptions>().ValidateOnStart();
+
+            if (configure is not null)
+            {
+                optionsBuilder.Configure(configure);
+            }
+
+            // The rules themselves are DataAnnotations on SoundCloudOptions, and
+            // ValidateSoundCloudOptions is source generated from them. There is
+            // deliberately no ValidateDataAnnotations() call: that one reflects,
+            // and the generated validator exists precisely to avoid it.
+            services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<IValidateOptions<SoundCloudOptions>, ValidateSoundCloudOptions>());
+
+            services.TryAddSingleton(TimeProvider.System);
+            services.TryAddSingleton<IMediaMuxer, FfmpegMuxer>();
+
+            AddApiClient<IClientIdProvider, ClientIdProvider>(services);
+            AddApiClient<ISoundCloudClient, SoundCloudClient>(services);
+            AddApiClient<IMediaTagger, AtlMediaTagger>(services);
+
+            AddTransferClient<ITrackDownloader, TrackDownloader>(services);
+
+            return services;
         }
-
-        optionsBuilder
-            .Validate(
-                options => options.MaxParallelSegments
-                    is >= SoundCloudOptions.MinParallelSegments
-                    and <= SoundCloudOptions.MaxAllowedParallelSegments,
-                $"{nameof(SoundCloudOptions.MaxParallelSegments)} must be between "
-                + $"{SoundCloudOptions.MinParallelSegments} and {SoundCloudOptions.MaxAllowedParallelSegments}.")
-            .Validate(
-                options => options.ClientIdCacheLifetime > TimeSpan.Zero,
-                $"{nameof(SoundCloudOptions.ClientIdCacheLifetime)} must be positive.")
-            .Validate(
-                options => !string.IsNullOrWhiteSpace(options.UserAgent),
-                $"{nameof(SoundCloudOptions.UserAgent)} must not be empty.")
-            .ValidateOnStart();
-
-        services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IMediaMuxer, FfmpegMuxer>();
-
-        // Metadata calls are small and idempotent, so they get retries.
-        AddApiClient<IClientIdProvider, ClientIdProvider>(services);
-        AddApiClient<ISoundCloudClient, SoundCloudClient>(services);
-        AddApiClient<IMediaTagger, AtlMediaTagger>(services);
-
-        // Transfers deliberately skip the standard resilience handler: its
-        // default total-request timeout would abort a long download partway
-        // through, and a retry would restart a multi-megabyte body from zero.
-        AddTransferClient<ITrackDownloader, TrackDownloader>(services);
-
-        return services;
     }
 
+    /// <summary>A typed client for the small, idempotent metadata calls, so it gets retries.</summary>
+    /// <remarks>
+    /// The agent string is applied through the builder rather than through an
+    /// AddHttpClient overload. The two-generic AddHttpClient set also contains
+    /// <c>Func&lt;HttpClient, TImplementation&gt;</c>, a typed-client factory, so a
+    /// method group passed there reads as ambiguous even though Roslyn binds the
+    /// Action. ConfigureHttpClient has no such twin.
+    /// </remarks>
     private static void AddApiClient<
         TInterface,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TImplementation>(
-        IServiceCollection services)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        TImplementation>(IServiceCollection services)
         where TInterface : class
         where TImplementation : class, TInterface
-    {
-        // Configured through the builder rather than an AddHttpClient overload.
-        // The two-generic AddHttpClient set also contains
-        // Func<HttpClient, TImplementation>, a typed-client factory, so a method
-        // group there reads as ambiguous even though Roslyn binds the Action.
-        // ConfigureHttpClient has no such twin.
-        services.AddHttpClient<TInterface, TImplementation>()
-                .ConfigureHttpClient(ApplyUserAgent)
-                .ConfigurePrimaryHttpMessageHandler(CreateHandler)
-                .AddStandardResilienceHandler();
-    }
+        => services.AddHttpClient<TInterface, TImplementation>()
+                   .ConfigureHttpClient(ApplyUserAgent)
+                   .ConfigurePrimaryHttpMessageHandler(CreateHandler)
+                   .AddStandardResilienceHandler();
 
+    /// <summary>
+    /// A typed client for the transfers themselves, deliberately without the
+    /// standard resilience handler: its total-request timeout would abort a long
+    /// download partway through, and a retry would restart a multi-megabyte body
+    /// from zero.
+    /// </summary>
     private static void AddTransferClient<
         TInterface,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TImplementation>(
-        IServiceCollection services)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        TImplementation>(IServiceCollection services)
         where TInterface : class
         where TImplementation : class, TInterface
-    {
-        services.AddHttpClient<TInterface, TImplementation>()
-                .ConfigureHttpClient(ApplyTransferSettings)
-                .ConfigurePrimaryHttpMessageHandler(CreateHandler);
-    }
+        => services.AddHttpClient<TInterface, TImplementation>()
+                   .ConfigureHttpClient(ApplyTransferSettings)
+                   .ConfigurePrimaryHttpMessageHandler(CreateHandler);
 
     /// <summary>
     /// Reads the agent string from options rather than restating it, so
