@@ -265,7 +265,13 @@ internal sealed class TrackDownloader(HttpClient http,
                 // path: ffmpeg picks its muxer from the extension it is given,
                 // and ".part" is not one it knows.
                 await muxer
-                      .MuxAsync(playlistUri, partialPath, Path.GetExtension(destination), progress, cancellationToken)
+                      .MuxAsync(
+                          playlistUri,
+                          partialPath,
+                          Path.GetExtension(destination),
+                          playlist.TotalDuration,
+                          progress,
+                          cancellationToken)
                       .ConfigureAwait(false);
 
                 File.Move(partialPath, destination, overwrite: true);
@@ -347,7 +353,7 @@ internal sealed class TrackDownloader(HttpClient http,
 
                 // The total is genuinely unknown until the last segment lands,
                 // so HLS reports bytes without a denominator.
-                progress?.Report(new(written, null));
+                progress?.Report(TransferProgress.FromBytes(written, null));
             }
         }
 
@@ -412,7 +418,7 @@ internal sealed class TrackDownloader(HttpClient http,
             await sink.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
 
             written += read;
-            progress?.Report(new(written, total));
+            progress?.Report(TransferProgress.FromBytes(written, total));
         }
 
         return written;

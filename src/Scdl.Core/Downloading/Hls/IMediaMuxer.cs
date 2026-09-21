@@ -18,15 +18,20 @@ internal interface IMediaMuxer
     /// name whose own extension says nothing about the container, and a muxer
     /// that guesses from the path gets it wrong.
     /// </param>
+    /// <param name="duration">
+    /// How long the assembled audio runs, which is the only thing a mux can
+    /// measure itself against - see <see cref="TransferProgress"/>.
+    /// </param>
     /// <param name="progress">
-    /// Receives the bytes written so far. A mux is the whole transfer for the
-    /// tracks that need one, so without this the progress bar has nothing to
-    /// report for the entire download.
+    /// Receives the position reached in the stream. A mux is the whole transfer
+    /// for the tracks that need one, so without this the progress bar has
+    /// nothing to report for the entire download.
     /// </param>
     /// <param name="cancellationToken">Cancels the muxing process.</param>
     Task MuxAsync(Uri playlistUri,
                   string outputPath,
                   string containerExtension,
+                  TimeSpan duration,
                   IProgress<TransferProgress>? progress,
                   CancellationToken cancellationToken);
 }

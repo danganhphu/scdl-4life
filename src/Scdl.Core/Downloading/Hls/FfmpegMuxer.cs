@@ -85,6 +85,7 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
     public async Task MuxAsync(Uri playlistUri,
                                string outputPath,
                                string containerExtension,
+                               TimeSpan duration,
                                IProgress<TransferProgress>? progress,
                                CancellationToken cancellationToken)
     {
@@ -142,7 +143,8 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
         // Both pipes must be drained concurrently. Reading one to completion
         // while the other fills its buffer is a classic deadlock.
         var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        var progressTask = FfmpegProgressReader.ReadAsync(process.StandardOutput, progress, cancellationToken);
+        var progressTask =
+            FfmpegProgressReader.ReadAsync(process.StandardOutput, duration, progress, cancellationToken);
 
         await Task.WhenAll(stderrTask, progressTask).ConfigureAwait(false);
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);

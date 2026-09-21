@@ -1,3 +1,4 @@
+using System.Globalization;
 using Scdl.Core.Audio;
 using Scdl.Core.Downloading;
 using Scdl.Core.SoundCloud;
@@ -107,6 +108,15 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
     /// </summary>
     private static string Describe(AudioCodec codec)
         => codec.ToString().ToUpperInvariant();
+
+    /// <summary>
+    /// m:ss, widening to h:mm:ss once a track runs past the hour. Zero padded on
+    /// the seconds only, so a running position does not jitter in width.
+    /// </summary>
+    public static string FormatDuration(TimeSpan value)
+        => value >= TimeSpan.FromHours(1)
+               ? value.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture)
+               : value.ToString(@"m\:ss", CultureInfo.InvariantCulture);
 
     public static string FormatBytes(long bytes)
     {

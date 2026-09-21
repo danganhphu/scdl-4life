@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Scdl.Core.Downloading.Hls;
@@ -8,6 +9,8 @@ namespace Scdl.Core.Downloading.Hls;
 /// </summary>
 public sealed partial record HlsPlaylist
 {
+    private const string SegmentDurationTag = "#EXTINF:";
+
     private HlsPlaylist() { }
 
     public required IReadOnlyList<Uri> Segments { get; init; }
@@ -23,6 +26,17 @@ public sealed partial record HlsPlaylist
 
     /// <summary>True when this is a master playlist listing variants rather than segments.</summary>
     public bool IsMasterPlaylist { get; init; }
+
+    /// <summary>
+    /// The sum of the <c>#EXTINF</c> durations, which is how long the assembled
+    /// audio runs, or zero when the playlist declares none.
+    /// </summary>
+    /// <remarks>
+    /// The only measure of a mux that moves. An MP4 muxer writes nothing until
+    /// the trailer, so bytes on disk say nothing about how far it has got, while
+    /// ffmpeg's reported position against this does.
+    /// </remarks>
+    public TimeSpan TotalDuration { get; init; }
 
     /// <summary>
     /// Fragmented MP4 needs a real muxer to become a playable file, so those
@@ -50,6 +64,7 @@ public sealed partial record HlsPlaylist
         Uri? initialization = null;
         var encrypted = false;
         var master = false;
+        var seconds = 0d;
 
         foreach (var rawLine in content.Split('\n'))
         {
@@ -89,6 +104,23 @@ public sealed partial record HlsPlaylist
             {
                 master = true;
             }
+            else if (line.StartsWith(SegmentDurationTag, StringComparison.OrdinalIgnoreCase))
+            {
+                // "#EXTINF:10.0,optional title" - the duration runs to the comma,
+                // which is mandatory even when no title follows it.
+                var value = line.AsSpan(SegmentDurationTag.Length);
+                var comma = value.IndexOf(',');
+
+                if (comma >= 0)
+                {
+                    value = value[..comma];
+                }
+
+                if (double.TryParse(value.Trim(), CultureInfo.InvariantCulture, out var duration))
+                {
+                    seconds += duration;
+                }
+            }
         }
 
         return new()
@@ -97,6 +129,7 @@ public sealed partial record HlsPlaylist
             InitializationSegment = initialization,
             IsEncrypted = encrypted,
             IsMasterPlaylist = master,
+            TotalDuration = TimeSpan.FromSeconds(seconds),
         };
     }
 }

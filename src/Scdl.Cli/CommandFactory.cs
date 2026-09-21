@@ -232,37 +232,50 @@ internal static class CommandFactory
                                                             CancellationToken cancellationToken)
     {
         DownloadResult? result = null;
+        var readout = new TransferReadout();
 
         await console.Progress()
                      .AutoClear(true)
                      .Columns(
                          new TaskDescriptionColumn(),
                          new ProgressBarColumn(),
-                         new UnknownTotalPercentageColumn(),
-                         new UnknownTotalDownloadedColumn(),
-                         new TransferSpeedColumn())
+                         new TransferPercentageColumn(),
+                         new TransferAmountColumn(readout),
+                         new TransferRateColumn(readout))
                      .StartAsync(async context =>
                      {
                          var task = context.AddTask(Markup.Escape(track.DisplayTitle), maxValue: 1d);
 
                          var progress = new Progress<TransferProgress>(tick =>
                          {
-                             var total = tick.TotalBytes;
+                             readout.Last = tick;
 
-                             if (total is > 0)
+                             if (tick.IsStreamTime)
                              {
-                                 task.MaxValue = total.Value;
+                                 // Seconds on both sides, so Spectre's own
+                                 // percentage is right and the columns read the
+                                 // unit off the tick rather than off the task.
                                  task.IsIndeterminate = false;
+                                 task.MaxValue = tick.StreamDuration.TotalSeconds;
+                                 task.Value = tick.StreamTime.TotalSeconds;
+
+                                 return;
+                             }
+
+                             if (tick.TotalBytes is > 0)
+                             {
+                                 task.IsIndeterminate = false;
+                                 task.MaxValue = tick.TotalBytes.Value;
                              }
                              else
                              {
-                                 // HLS has no total until the final segment lands,
-                                 // and a mux never gets one at all. The ceiling has
-                                 // to stay out of reach as well: Spectre calls a
-                                 // task finished the moment Value meets MaxValue,
-                                 // and a finished task freezes as a full bar.
-                                 task.MaxValue = double.PositiveInfinity;
+                                 // Segment concatenation has no total until the
+                                 // last one lands. The ceiling has to stay out of
+                                 // reach as well: Spectre calls a task finished
+                                 // the moment Value meets MaxValue, and a
+                                 // finished task freezes as a full bar.
                                  task.IsIndeterminate = true;
+                                 task.MaxValue = double.PositiveInfinity;
                              }
 
                              task.Value = tick.BytesTransferred;
