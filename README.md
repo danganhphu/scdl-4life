@@ -63,30 +63,51 @@ Two routes go above 128, and `scdl formats` tells you whether either is open bef
 
 ## Install
 
-No runtime needed. The binary is self-contained and does not require .NET installed.
+No runtime needed - the binary is self-contained and does not require .NET installed. Take the archive for your
+platform from [Releases](https://github.com/danganhphu/scdl-4life/releases), then:
+
+**Windows**
 
 ```powershell
-# Windows: from https://github.com/danganhphu/scdl-4life/releases
 Expand-Archive scdl-0.1.0-win-x64.zip -DestinationPath $env:LOCALAPPDATA\scdl
 ```
 
+**Linux**
+
 ```bash
-# Linux
 tar -xzf scdl-0.1.0-linux-x64.tar.gz -C ~/.local/bin
 ```
 
-Windows shows a SmartScreen warning the first time, because the binary is not code signed. *More info*, then
-*Run anyway*. If that is not acceptable, build it yourself - see [Build](#build).
+**macOS**, Apple Silicon. The second line clears the quarantine flag that macOS puts on anything a browser downloaded:
+
+```bash
+tar -xzf scdl-0.1.0-osx-arm64.tar.gz -C /usr/local/bin
+xattr -d com.apple.quarantine /usr/local/bin/scdl
+```
+
+Intel Macs have no prebuilt binary, because Native AOT cannot cross-compile between architectures. Build from source
+instead - see [Set up](#set-up).
+
+The binary is not code signed, so each platform asks once. Windows shows a SmartScreen warning: *More info*, then
+*Run anyway*.
+
+### Verifying a download
 
 Every release carries `SHA256SUMS.txt` and a build provenance attestation, so you can check that what you downloaded is
-what this repository's workflow built:
+what this repository's workflow built.
 
 ```powershell
 (Get-FileHash .\scdl-0.1.0-win-x64.zip -Algorithm SHA256).Hash
 gh attestation verify .\scdl-0.1.0-win-x64.zip --repo danganhphu/scdl-4life
 ```
 
-Verify the archive, not the executable inside it. Only the archive's bytes were signed.
+```bash
+sha256sum -c SHA256SUMS.txt
+gh attestation verify scdl-0.1.0-linux-x64.tar.gz --repo danganhphu/scdl-4life
+```
+
+macOS has no `sha256sum`; use `shasum -a 256 -c SHA256SUMS.txt` instead. Verify the archive rather than the executable
+inside it - only the archive's bytes were signed.
 
 ## Use
 
@@ -94,6 +115,12 @@ Verify the archive, not the executable inside it. Only the archive's bytes were 
 scdl formats "https://soundcloud.com/<user>/<track>"
 scdl get "https://soundcloud.com/<user>/<track>" -o D:\Music
 scdl get "<url>" --oauth "<go-plus-token>" -o D:\Music
+```
+
+```bash
+scdl formats "https://soundcloud.com/<user>/<track>"
+scdl get "https://soundcloud.com/<user>/<track>" -o ~/Music
+scdl get "<url>" --oauth "<go-plus-token>" -o ~/Music
 ```
 
 ```text
@@ -140,18 +167,30 @@ A script can tell "install ffmpeg" from "that track is gone" without parsing Eng
 AAC over HLS arrives as fragmented MP4 and needs a muxer; everything else is reassembled in managed code. Without
 ffmpeg, `scdl` steps down to the next rung and says so at warning level rather than quietly handing you worse audio.
 
+**Windows**
+
 ```powershell
-winget install Gyan.FFmpeg     # Windows
-sudo apt install ffmpeg        # Debian, Ubuntu
-brew install ffmpeg            # macOS
+winget install Gyan.FFmpeg
+```
+
+**Linux**, through whichever package manager your distribution uses - `dnf`, `pacman` and `zypper` all carry it too:
+
+```bash
+sudo apt install ffmpeg
+```
+
+**macOS**
+
+```bash
+brew install ffmpeg
 ```
 
 ## Notes from the api-v2 side
 
 It is undocumented and inconsistent, so a few things are worth knowing before reading the code:
 
-- `client_id` is scraped from the web player bundles and cached for seven days under `%LOCALAPPDATA%\scdl\`. SoundCloud
-  publishes no other way to get one.
+- `client_id` is scraped from the web player bundles and cached for seven days - `%LOCALAPPDATA%\scdl\` on Windows,
+  `~/.local/share/scdl/` on Linux and macOS. SoundCloud publishes no other way to get one.
 - SoundCloud advertises rungs it will not serve. `abr_sq` sits in `media.transcodings` while its stream endpoint
   answers 404, so a dead rung steps down the ladder instead of ending the download.
 - `on.soundcloud.com` short links are 302s that `/resolve` refuses to follow.
@@ -169,17 +208,24 @@ cd scdl-4life
 ./build.ps1 All
 ```
 
-`build.ps1` is the engine and the other entry points forward to it: `Restore`, `Build`, `Test`, `Coverage`, `Publish`,
-`Run`. On a machine with nothing but the SDK, start with `./build.cmd` or `./build.sh` instead - they bootstrap
-PowerShell out of the tool manifest, which is what makes a fresh clone work when only Windows PowerShell 5.1 is
-present, or when the execution policy refuses an unsigned script.
+```bash
+git clone https://github.com/danganhphu/scdl-4life.git
+cd scdl-4life
+./build.sh All
+```
+
+`build.ps1` is the engine and everything else forwards to it: `Restore`, `Build`, `Test`, `Coverage`, `Publish`, `Run`.
+`build.cmd` and `build.sh` are bootstrappers that run it through the PowerShell in the tool manifest, which is what
+makes a fresh clone work with nothing but the SDK installed - `cmd.exe` cannot execute a `.ps1` at all, an execution
+policy can refuse an unsigned script, and a new Windows machine may only have PowerShell 5.1, which the script rejects.
 
 Two optional pieces, neither of which blocks a build or the tests:
 
 - **ffmpeg** on PATH, for the AAC rungs. The muxer is mocked in the tests, so a green suite says nothing about whether
   you have it.
-- **Desktop development with C++** from the Visual Studio installer, for Native AOT. Without it `./build.ps1 Publish`
-  falls back to a trimmed self-contained binary; CI links AOT on both platforms either way.
+- **A native toolchain**, for Native AOT: *Desktop development with C++* from the Visual Studio installer on Windows,
+  `clang` and `zlib1g-dev` on Linux, the Xcode command line tools on macOS. Without one, `./build.ps1 Publish` falls
+  back to a trimmed self-contained binary. CI links AOT on all three either way.
 
 Agent instructions are installed rather than committed, because they ship inside the Aspire CLI and are version matched
 to it. Run this after cloning, and again after `aspire update --self`:

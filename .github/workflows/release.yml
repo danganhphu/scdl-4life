@@ -57,6 +57,11 @@ jobs:
           - os: ubuntu-latest
             runtime: linux-x64
 
+          # Apple Silicon only. ILC cannot cross-compile between architectures,
+          # so an Intel build would need a macos-13 runner of its own.
+          - os: macos-latest
+            runtime: osx-arm64
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
