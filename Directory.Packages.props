@@ -14,31 +14,22 @@
   </ItemGroup>
 
   <ItemGroup Label="Cli">
-    <!-- System.CommandLine rather than Spectre.Console.Cli: the latter is
-         explicitly documented as neither trimmable nor AOT appropriate.
-         Spectre.Console itself is used for rendering only. -->
+    <!-- Parsing is System.CommandLine because Spectre.Console.Cli is documented
+         as neither trimmable nor AOT appropriate. Spectre renders only. -->
     <PackageVersion Include="System.CommandLine" Version="2.0.12" />
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
   </ItemGroup>
 
   <ItemGroup Label="Media">
-    <!-- ATL is pure managed and parses containers by hand, so it survives
-         trimming far better than a reflection driven tagger. -->
+    <!-- ATL parses containers in managed code, so it survives trimming. -->
     <PackageVersion Include="z440.atl.core" Version="7.17.0" />
   </ItemGroup>
 
-  <!-- GlobalPackageReference applies to every project in the repo without any
-       project opting in. It implies PrivateAssets="all" and strips the compile
-       and runtime assets, which is exactly what an analyzer wants, so none of
-       that has to be spelled out per reference. -->
   <ItemGroup Label="Analyzers">
     <GlobalPackageReference Include="Roslynator.Analyzers" Version="5.0.0" />
     <GlobalPackageReference Include="Roslynator.Formatting.Analyzers" Version="5.0.0" />
   </ItemGroup>
 
-  <!-- Derives the version from the nearest git tag, so there is exactly one
-       place a version is declared and it is the thing that triggers a release.
-       Build-time only, like the analyzers above. -->
   <ItemGroup Label="Versioning">
     <GlobalPackageReference Include="MinVer" Version="8.0.0" />
   </ItemGroup>
@@ -52,9 +43,8 @@
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
 
-    <!-- Ships in lockstep with Spectre.Console and must stay pinned to the same
-         version: TestConsole implements IAnsiConsole, which is not a stable
-         interface across releases. -->
+    <!-- Must stay pinned to the Spectre.Console version above: TestConsole
+         implements IAnsiConsole, which is not stable across releases. -->
     <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2" />
   </ItemGroup>
 </Project>

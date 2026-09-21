@@ -1,8 +1,7 @@
 name: conventional-commits
 
-# pull_request, not pull_request_target. This job never checks the branch out
-# and only reads the title, so it has no reason to run with the base repo's
-# write-capable token.
+# pull_request, not pull_request_target: this never checks the branch out and
+# only reads the title, so it has no reason to run with a write-capable token.
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
@@ -20,12 +19,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Deliberately a regex rather than a third-party action. The rule is six
-      # lines of grep, and a marketplace action here would be a supply chain
-      # dependency with write-ish context for the sake of six lines.
+      # A regex rather than a marketplace action: the rule is six lines of grep,
+      # and an action here would be a supply chain dependency for six lines.
       - name: Check the title is a conventional commit
         env:
           TITLE: ${{ github.event.pull_request.title }}
+
+          # The author, not github.actor: actor is whoever triggered the run, so
+          # a human editing a Dependabot title would take the exemption away.
+          AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
 
@@ -41,7 +43,12 @@ jobs:
           # The subject is a description, not a sentence: no capital, no period.
           subject="${TITLE#*: }"
 
-          if printf '%s' "$subject" | grep -Eq '^[A-Z]'; then
+          # Dependabot writes its titles from a template that capitalises the
+          # first word, and only the prefix is configurable. Exempting the whole
+          # job instead would report as "skipped", which GitHub does not count
+          # as success, so it would block these outright if this becomes
+          # required. Every other rule below still applies to it.
+          if [ "$AUTHOR" != 'dependabot[bot]' ] && printf '%s' "$subject" | grep -Eq '^[A-Z]'; then
             echo "::error::Start the description in lower case: $subject"
             exit 1
           fi

@@ -4,23 +4,14 @@
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
 
-    <!-- TUnit runs on Microsoft.Testing.Platform. The runner is selected by the
-         "test" section in global.json; TestingPlatformDotnetTestSupport is the
-         older VSTest-bridge opt-in and must NOT be set alongside it. -->
-
-    <!-- Moq builds proxies at runtime, so the test host is the one project in
-         the solution that cannot be AOT clean. Overrides the solution default. -->
+    <!-- Moq builds proxies at run time, so this one cannot be AOT clean. -->
     <IsAotCompatible>false</IsAotCompatible>
     <EnableAotAnalyzer>false</EnableAotAnalyzer>
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
 
-    <!-- CA1707 bans underscores in member names. Test names are sentences, not
-         API surface, and Given_When_Then reads better than GivenWhenThen. This
-         is the one place the rule is worth turning off. -->
+    <!-- Test names are sentences, so CA1707 has nothing useful to say here. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
 
-    <!-- Overrides the solution default. Nothing consumes docs for a test
-         assembly, and doc-comment rules over test code are pure noise. -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 

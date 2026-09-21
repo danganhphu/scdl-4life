@@ -1,12 +1,9 @@
 name: release
 
-# Merging to main is the only trigger. release-please keeps a release pull
-# request up to date as commits land; merging *that* is what cuts a release.
-# Nobody types `git tag` again.
-#
-# The three jobs live in one workflow on purpose. A tag pushed by the default
-# GITHUB_TOKEN deliberately does not start another workflow run, so a separate
-# tag-triggered workflow would simply never fire.
+# Merging to main is the only trigger; merging the release pull request is what
+# cuts a release. The three jobs share one workflow because a tag pushed by
+# GITHUB_TOKEN does not start another run, so a tag-triggered workflow would
+# never fire.
 on:
   push:
     branches: [main]
@@ -15,17 +12,13 @@ on:
 permissions:
   contents: read
 
-# Never cancelled. A half-finished release leaves a published release with no
-# binaries attached to it.
+# Never cancelled: a half finished release leaves a published release with no
+# binaries on it.
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  # Reads the conventional commits since the last release, works out the next
-  # version, and maintains a release pull request carrying the changelog. On
-  # the run where that pull request is merged it tags, creates the release, and
-  # sets release_created - which is the only thing the jobs below wait on.
   release-please:
     name: release pull request
     runs-on: ubuntu-latest
@@ -61,26 +54,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The tag release-please just created, so MinVer reads the released
-          # version rather than whatever main has moved on to.
+          # version rather than whatever main has moved on to. It needs the
+          # tags, and a shallow clone has none.
           ref: ${{ needs.release-please.outputs.tag }}
-
-          # MinVer reads the version off the nearest tag, and a shallow clone
-          # has none. Without this the binary would report 0.0.0-alpha.0 no
-          # matter what version the release claims.
           fetch-depth: 0
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
-      # ILC links with clang on Linux and needs the objects it links against.
-      # Without these the publish fails at the link step, not at compile.
+      # ILC links with clang on Linux. Without these the publish fails at the
+      # link step rather than at compile.
       - name: Install the Native AOT prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
 
-      # build.ps1 imports the MSVC environment itself on Windows and falls back
-      # to a trimmed self-contained binary when no native toolchain is present.
       - name: Publish
         shell: pwsh
         run: ./build.ps1 Publish -Runtime ${{ matrix.runtime }}
@@ -101,10 +89,9 @@ jobs:
           Copy-Item $binary.FullName -Destination $staging
           Copy-Item 'README.md', 'LICENSE' -Destination $staging
 
-      # Two steps rather than one, because the archive format is not a detail:
-      # .zip carries no Unix permission bits, so a Linux user unpacking one gets
-      # a binary without its executable flag. tar preserves the mode, and it is
-      # what anyone on Unix expects to download anyway.
+      # Two steps because the format matters: zip carries no Unix permission
+      # bits, so a Linux user unpacking one gets a binary without its executable
+      # flag.
       - name: Archive for Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -139,7 +126,7 @@ jobs:
     if: needs.release-please.outputs.created == 'true'
     runs-on: ubuntu-latest
 
-    # The only job that writes. Kept separate so the build jobs stay read-only.
+    # The only job that writes, kept separate so the build jobs stay read-only.
     permissions:
       contents: write # upload the assets
       id-token: write # sign the provenance
@@ -151,24 +138,17 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      # Written next to the archives so anyone can check that what they
-      # downloaded is what this workflow built.
       - name: Checksum the archives
         working-directory: artifacts
         run: |
           sha256sum *.zip *.tar.gz | tee SHA256SUMS.txt
 
-      # Records in a public transparency log that these exact bytes came out of
-      # this workflow, at this commit, on a GitHub runner. Free for a public
-      # repository.
-      #
-      # This is not code signing and it does not stop the SmartScreen warning -
-      # that needs a certificate somebody has to pay for every year. What it
-      # does give is something a suspicious user can actually check:
+      # Not code signing, and it does not stop the SmartScreen warning. What it
+      # gives is something a suspicious user can check:
       #
       #   gh attestation verify scdl-0.1.0-win-x64.zip --repo danganhphu/scdl-4life
       #
-      # The archive is the subject, not the executable inside it. Verifying an
+      # The archive is the subject, not the executable inside it - verifying an
       # extracted scdl.exe fails, because those bytes were never attested.
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
@@ -176,10 +156,9 @@ jobs:
             artifacts/*.zip
             artifacts/*.tar.gz
 
-      # release-please already created the release and wrote its notes from the
-      # changelog, so this only hangs the binaries on it. For the few minutes
-      # between the two the release exists with no assets, which is the price of
-      # the tag having to exist before anything can be built against it.
+      # release-please already created the release and its notes, so this only
+      # hangs the binaries on it. For the few minutes in between, the release
+      # exists with no assets.
       - name: Upload the assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

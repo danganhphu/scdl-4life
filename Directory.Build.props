@@ -11,22 +11,16 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 
-    <!-- Every warning is an error, the way microsoft/aspire does it. This is the
-         boolean property; the similarly named WarningsAsErrors takes a LIST of
-         warning IDs (plus the token "nullable"), so <WarningsAsErrors>true</...>
-         silently escalates nothing because "true" is not a warning ID. -->
+    <!-- The boolean one. WarningsAsErrors takes a list of IDs, so setting that
+         to "true" escalates nothing at all. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
-    <!-- The one class of warning that arrives from outside the code: a new CVE
-         advisory against a transitive package would otherwise break an unrelated
-         build the morning it is published. They stay visible as warnings. -->
+    <!-- A CVE published against a transitive package should not break an
+         unrelated build the morning it lands. -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
 
-    <!-- On by default for every project, including any added later. Without it
-         the compiler never binds doc comments, so the doc-comment analyzers are
-         silently dead on the build while Rider still reports them - the IDE and
-         CI quietly disagreeing about the same code. Projects that genuinely do
-         not want it opt out explicitly. -->
+    <!-- Without it the compiler never binds doc comments, so the doc analyzers
+         go quiet on the build while the IDE keeps reporting them. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -35,42 +29,18 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>Recommended</AnalysisMode>
-
-    <!-- CodeAnalysisTreatWarningsAsErrors is deliberately absent: it only covers
-         CA rules, and TreatWarningsAsErrors above already covers everything. -->
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
   </PropertyGroup>
 
+  <!-- Every project, not just the one that publishes AOT: a library reaching
+       for reflection is far cheaper to catch here than at publish time. -->
   <PropertyGroup Label="Aot">
-    <!-- Every project is held to AOT and trim rules, not just the one that
-         publishes AOT. A library that quietly reaches for reflection is far
-         cheaper to catch here than at publish time. The test project opts out,
-         because Moq builds proxies at runtime. -->
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
-  <!-- Analyzers live in Directory.Packages.props as GlobalPackageReference.
-       That item type exists for exactly this case and already implies
-       PrivateAssets="all" plus the right IncludeAssets, so there is nothing to
-       restate - or get wrong - here. -->
-
-  <!-- MinVer reads the version off the nearest `v*` tag. Nothing here declares a
-       version number, because a number written in a file drifts from the tag
-       that was actually released: the version flag reported 1.0.0 for months
-       purely because that is the SDK's default and nobody had set one.
-
-       Two consequences worth knowing:
-       * Untagged builds report 0.0.0-alpha.0.N, which is honest. They are not
-         a release.
-       * A shallow clone has no tags, so MinVer warns and the build fails on it.
-         Every checkout in .github/workflows sets fetch-depth to 0.
-
-       Note the bullets are asterisks, not hyphens. XML forbids a double hyphen
-       inside a comment, and MSBuild answers a malformed props file by dropping
-       it silently: TargetFramework then goes missing and the build fails with
-       "Ahead-of-time compilation is not supported for the target framework",
-       which points nowhere near the comment that caused it. -->
+  <!-- MinVer reads the nearest v* tag, so no file declares a version. A shallow
+       clone has no tags and fails the build, hence fetch-depth 0 everywhere. -->
   <PropertyGroup Label="Versioning">
     <MinVerTagPrefix>v</MinVerTagPrefix>
     <MinVerDefaultPreReleaseIdentifiers>alpha.0</MinVerDefaultPreReleaseIdentifiers>

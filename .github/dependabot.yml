@@ -1,8 +1,6 @@
 version: 2
 
 updates:
-  # Central Package Management means every version lives in
-  # Directory.Packages.props, so Dependabot edits one file.
   - package-ecosystem: nuget
     directory: /
     schedule:
@@ -10,17 +8,16 @@ updates:
       day: monday
     open-pull-requests-limit: 5
 
-    # Dependabot's default title is "Bump X from 1 to 2", which the
-    # conventional-commits workflow rejects. Setting the prefix here is the
-    # native fix; a workflow that renames titles after the fact is not needed.
+    # Only the prefix is configurable; the "Bump X from 1 to 2" after it is not,
+    # which is why conventional-commits.yml exempts Dependabot from the lower
+    # case rule.
     commit-message:
       prefix: chore
       prefix-development: chore
       include: scope
 
-    # assignees rather than reviewers: GitHub dropped reviewers from the
-    # configuration reference and points at CODEOWNERS instead, which this repo
-    # already has. An assignee shows up in "Assigned to you" either way.
+    # assignees, not reviewers: GitHub dropped reviewers from the configuration
+    # reference and points at CODEOWNERS, which this repo already has.
     assignees:
       - danganhphu
 
@@ -43,8 +40,8 @@ updates:
         patterns:
           - Spectre.Console*
 
-  # Actions are pinned to a commit SHA. Dependabot understands that form and
-  # updates the SHA together with the version comment beside it.
+  # Actions are pinned to a commit SHA. Dependabot updates the SHA together with
+  # the version comment beside it.
   - package-ecosystem: github-actions
     directory: /
     schedule:

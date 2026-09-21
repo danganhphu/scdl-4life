@@ -4,14 +4,12 @@
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
 
-    <!-- Nothing here builds proxies at runtime, but the test platform itself is
-         not AOT clean, so the analyzers would only report on code that never
-         gets published. Matches Scdl.Core.Tests. -->
+    <!-- The test platform is not AOT clean, and none of this is published. -->
     <IsAotCompatible>false</IsAotCompatible>
     <EnableAotAnalyzer>false</EnableAotAnalyzer>
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
 
-    <!-- CA1707 bans underscores in member names. Test names are sentences. -->
+    <!-- Test names are sentences, so CA1707 has nothing useful to say here. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
 
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -19,10 +17,6 @@
 
   <ItemGroup>
     <PackageReference Include="TUnit" />
-
-    <!-- TestConsole captures what the renderer writes, so the assertions are
-         about output a user would actually see rather than about calls made on
-         a mock. -->
     <PackageReference Include="Spectre.Console.Testing" />
   </ItemGroup>
 

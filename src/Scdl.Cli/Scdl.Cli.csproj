@@ -2,9 +2,6 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-
-    <!-- The only override that earns its place: the command is `scdl`, not
-         `Scdl.Cli`. RootNamespace stays at its default. -->
     <AssemblyName>scdl</AssemblyName>
   </PropertyGroup>
 
@@ -13,14 +10,10 @@
     <StripSymbols>true</StripSymbols>
     <InvariantTimezone>true</InvariantTimezone>
 
-    <!-- Size over startup latency: this is a short lived CLI, so the extra
-         optimisation time at publish is paid once and the smaller binary is
-         paid on every copy. -->
+    <!-- A short lived CLI: a smaller binary beats a faster start. -->
     <OptimizationPreference>Size</OptimizationPreference>
     <IlcOptimizationPreference>Size</IlcOptimizationPreference>
 
-    <!-- Fail the publish on a trim or AOT warning rather than shipping a binary
-         that throws only once it reaches a reflection path at runtime. -->
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
@@ -34,10 +27,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 
-  <!-- Builds README.md from readme.source.md, pulling every code block straight
-       out of the compiled sources. Docs that quote real code cannot drift from
-       it. Only one project needs to host this, or it would run once per
-       project over the same files. -->
+  <!-- Builds README.md from README.source.md. Hosted by one project only, or it
+       runs once per project over the same files. Left unconfigured on purpose:
+       its ReadOnly and WriteHeader parameters are bool?, which MSBuild on
+       .NET 10 cannot bind a value into, and setting either fails with MSB4030. -->
   <ItemGroup>
     <PackageReference Include="MarkdownSnippets.MsBuild">
       <PrivateAssets>all</PrivateAssets>
@@ -45,15 +38,7 @@
     </PackageReference>
   </ItemGroup>
 
-  <!-- No MarkdownSnippets properties are set, and that is deliberate. The task
-       hardcodes ProjectDirectory and finds the repo root itself, and its
-       ReadOnly and WriteHeader parameters are declared as bool?, which MSBuild
-       on .NET 10 cannot convert a value into - setting either one fails the
-       build with MSB4030. Leaving them empty is the only working configuration. -->
-
   <ItemGroup>
-    <!-- Everything in this assembly is internal, including the composition root
-         itself. The tests are the only outside caller it has. -->
     <InternalsVisibleTo Include="Scdl.Cli.Tests" />
   </ItemGroup>
 

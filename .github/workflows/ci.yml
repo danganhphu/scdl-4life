@@ -1,26 +1,16 @@
 name: ci
 
-# Deliberately no paths-ignore. These jobs are required status checks, and a
-# run that a path filter skips reports as "skipped", which GitHub does not
-# count as success - a pull request touching only a readme would never become
-# mergeable. The documented way around that is a second workflow emitting jobs
-# of the same name that do nothing, and that is more moving parts than a three
-# minute build is worth now that a public repo has unmetered Actions minutes.
+# No paths-ignore: these are required checks, and a run that a path filter skips
+# reports as "skipped", which GitHub does not count as success. A readme-only
+# pull request would never become mergeable.
 on:
   push:
     branches: [main]
 
-  # No branch filter, on purpose. With `branches: [main]` a pull request opened
-  # against anything else - a stacked pull request onto its parent - was filtered
-  # out entirely, so none of the required checks ever ran. Retargeting it to main
-  # afterwards does not help: GitHub reports that as an `edited` action, which
-  # `pull_request` does not listen for by default, and the checks sit at
-  # "Expected - waiting for status to be reported" forever.
-  #
-  # Listening for `edited` would fix the retarget case and also rerun the whole
-  # build every time somebody corrects a typo in a description. Running on every
-  # pull request regardless of base is the cheaper answer and the more honest
-  # one: a change is worth checking wherever it is headed.
+  # No branch filter either. With branches: [main] a pull request opened against
+  # anything else was filtered out entirely and none of the required checks ever
+  # ran, and retargeting it to main afterwards does not help - GitHub reports
+  # that as `edited`, which pull_request does not listen for by default.
   pull_request:
 
   workflow_dispatch:
@@ -50,15 +40,10 @@ jobs:
         with:
           global-json-file: global.json
 
-      # Restore is the most expensive step in this job: measured at 62s of a 128s
-      # run on the Windows runner, against 14s of 38s on Linux. Most of it is the
-      # tool manifest rather than the packages - it pulls a PowerShell of about
-      # 100 MB. Local tools resolve out of the same global packages folder, so one
-      # cache covers both restores.
-      #
-      # The key hashes everything that decides what gets restored. restore-keys
-      # lets a near miss start from the last good cache and download only the
-      # difference, which is the common case when one package version moves.
+      # Restore is the most expensive step on Windows, and most of it is the tool
+      # manifest rather than the packages - it pulls a PowerShell of about 100 MB.
+      # Local tools resolve out of the same global packages folder, so one cache
+      # covers both restores.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
@@ -70,13 +55,10 @@ jobs:
           dotnet tool restore
           dotnet restore scdl-4life.slnx
 
-      # Directory.Build.props turns on ContinuousIntegrationBuild when CI is set,
-      # which GitHub does for every step. Analyzer findings are errors here, so a
-      # warning-free build is the actual gate.
       - name: Build
         run: dotnet build scdl-4life.slnx -c Release --no-restore
 
-      # MTP mode wants --solution; a bare positional path is a VSTest-mode habit.
+      # MTP mode wants --solution; a bare positional path is a VSTest habit.
       - name: Test
         run: dotnet test --solution scdl-4life.slnx -c Release --no-build
 
@@ -94,17 +76,16 @@ jobs:
         with:
           global-json-file: global.json
 
-      # Same cache and the same key as the build job, so this one reads what that
-      # one already wrote in the same run rather than restoring from scratch.
+      # Same key as the build job, so this reads what that one already wrote.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '.config/dotnet-tools.json', 'global.json', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      # build.ps1 imports the MSVC environment itself, so Native AOT links here.
-      # It falls back to a trimmed self-contained binary if the toolchain is ever
-      # missing, which is why the upload globs both output folders.
+      # build.ps1 imports the MSVC environment itself, and falls back to a
+      # trimmed self-contained binary when the toolchain is missing - which is
+      # why the upload globs both output folders.
       - name: Publish
         shell: pwsh
         run: ./build.ps1 Publish
