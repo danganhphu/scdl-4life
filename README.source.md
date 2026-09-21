@@ -131,9 +131,8 @@ git push -u origin fix/what-this-changes
 gh pr create --fill
 ```
 
-The conventions are in [AGENTS.md](AGENTS.md), task-specific procedures in [`.agents/skills`](.agents/skills), and the
-reasoning behind the decisions - including approaches that were tried and rejected - in
-[`claude-memory`](claude-memory). Pull request titles must be Conventional Commits; a workflow checks that.
+The conventions are in [AGENTS.md](AGENTS.md) and the task-specific procedures in
+[`.agents/skills`](.agents/skills). Pull request titles must be Conventional Commits; a workflow checks that.
 
 Edit `README.source.md`, never `README.md`. The latter is generated during the build, with the code blocks pulled out of
 the real sources so the documented ladder cannot drift from the code that implements it.

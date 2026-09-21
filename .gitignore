@@ -355,6 +355,13 @@ MigrationBackup/
 
 .containers
 
+## Local working context shared between the maintainer and an AI agent. It is
+## the long form of every decision, including approaches that were tried and
+## failed, and it is deliberately not tracked: it is not documentation the repo
+## owes anyone. Anything here that becomes a rule belongs in AGENTS.md or in a
+## skill under .agents/skills instead.
+claude-memory/
+
 ## Per-machine agent settings. .claude/settings.json is shared and committed;
 ## this one holds whatever must not be, such as a GH_TOKEN for the account that
 ## owns this repo.

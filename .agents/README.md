@@ -2,16 +2,14 @@
 
 Instructions for coding agents, in the layout the wider ecosystem is settling
 on: one folder per skill under `.agents/skills`, each holding a `SKILL.md` with
-`name` and `description` frontmatter. See `microsoft/aspire` and
-`foxminchan/BookWorm` for the same shape.
+`name` and `description` frontmatter.
 
-## How the three instruction sources divide
+## How the two instruction sources divide
 
 | Source | Loaded | Holds |
 | --- | --- | --- |
 | `AGENTS.md` | always | conventions, commands, project layout - the things that apply to every change |
 | `.agents/skills/*/SKILL.md` | on demand, by `description` | procedures for one kind of task, and the traps specific to it |
-| `claude-memory/` | when the reasoning matters | why a decision went that way, what was rejected, how a trap was diagnosed |
 
 A skill should tell an agent **how to do something here and what goes wrong**,
 not restate the style rules. If a line belongs in every change, it belongs in
