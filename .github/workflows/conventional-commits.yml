@@ -26,6 +26,11 @@ jobs:
       - name: Check the title is a conventional commit
         env:
           TITLE: ${{ github.event.pull_request.title }}
+
+          # The author, not github.actor: actor is whoever triggered the run, so
+          # a human editing the title of a Dependabot pull request would change
+          # it. Who opened the pull request is the stable fact.
+          AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
 
@@ -41,7 +46,14 @@ jobs:
           # The subject is a description, not a sentence: no capital, no period.
           subject="${TITLE#*: }"
 
-          if printf '%s' "$subject" | grep -Eq '^[A-Z]'; then
+          # Dependabot is exempt from this one rule. It writes its titles from a
+          # template that capitalises the first word - "Bump the testing group
+          # with 1 update" - and while the prefix is configurable, and set in
+          # .github/dependabot.yml, the wording after it is not. So the rule
+          # would fail every dependency pull request forever with nothing a
+          # reviewer could do but retype the title by hand. Every other rule
+          # here still applies to it, and a bot title cannot break them anyway.
+          if [ "$AUTHOR" != 'dependabot[bot]' ] && printf '%s' "$subject" | grep -Eq '^[A-Z]'; then
             echo "::error::Start the description in lower case: $subject"
             exit 1
           fi
