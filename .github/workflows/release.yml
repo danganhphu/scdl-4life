@@ -1,26 +1,53 @@
 name: release
 
+# Merging to main is the only trigger. release-please keeps a release pull
+# request up to date as commits land; merging *that* is what cuts a release.
+# Nobody types `git tag` again.
+#
+# The three jobs live in one workflow on purpose. A tag pushed by the default
+# GITHUB_TOKEN deliberately does not start another workflow run, so a separate
+# tag-triggered workflow would simply never fire.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Tag to build the release from, for example v0.1.0
-        required: true
-        type: string
 
 permissions:
   contents: read
 
+# Never cancelled. A half-finished release leaves a published release with no
+# binaries attached to it.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
+  # Reads the conventional commits since the last release, works out the next
+  # version, and maintains a release pull request carrying the changelog. On
+  # the run where that pull request is merged it tags, creates the release, and
+  # sets release_created - which is the only thing the jobs below wait on.
+  release-please:
+    name: release pull request
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+
   publish:
     name: publish ${{ matrix.runtime }}
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true'
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -33,11 +60,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          # The tag release-please just created, so MinVer reads the released
+          # version rather than whatever main has moved on to.
+          ref: ${{ needs.release-please.outputs.tag }}
 
           # MinVer reads the version off the nearest tag, and a shallow clone
-          # has none. Without this the binary in the release would report
-          # 0.0.0-alpha.0 no matter what tag triggered the build.
+          # has none. Without this the binary would report 0.0.0-alpha.0 no
+          # matter what version the release claims.
           fetch-depth: 0
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -51,16 +80,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
 
       # build.ps1 imports the MSVC environment itself on Windows and falls back
-      # to a trimmed self-contained binary when no native toolchain is present,
-      # which is why the upload globs both output folders.
+      # to a trimmed self-contained binary when no native toolchain is present.
       - name: Publish
         shell: pwsh
         run: ./build.ps1 Publish -Runtime ${{ matrix.runtime }}
 
-      - name: Name the archive
+      - name: Stage what goes in the archive
         shell: pwsh
         run: |
-          $version = '${{ inputs.tag || github.ref_name }}'.TrimStart('v')
           $binary = Get-ChildItem -Path artifacts -Recurse -Include 'scdl', 'scdl.exe' | Select-Object -First 1
 
           if (-not $binary)
@@ -72,28 +99,49 @@ jobs:
           New-Item -ItemType Directory -Force -Path $staging | Out-Null
 
           Copy-Item $binary.FullName -Destination $staging
-          Copy-Item 'README.md', 'LICENSE' -Destination $staging -ErrorAction SilentlyContinue
+          Copy-Item 'README.md', 'LICENSE' -Destination $staging
 
-          $archive = Join-Path 'artifacts' "scdl-$version-${{ matrix.runtime }}.zip"
-          Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $archive -Force
+      # Two steps rather than one, because the archive format is not a detail:
+      # .zip carries no Unix permission bits, so a Linux user unpacking one gets
+      # a binary without its executable flag. tar preserves the mode, and it is
+      # what anyone on Unix expects to download anyway.
+      - name: Archive for Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: |
+          $version = $env:TAG.TrimStart('v')
+          Compress-Archive `
+              -Path 'artifacts/release/*' `
+              -DestinationPath "artifacts/scdl-$version-${{ matrix.runtime }}.zip" `
+              -Force
 
-          "archive=$archive" >> $env:GITHUB_OUTPUT
-        id: package
+      - name: Archive for Unix
+        if: runner.os != 'Windows'
+        run: |
+          version="${TAG#v}"
+          tar -czf "artifacts/scdl-$version-${{ matrix.runtime }}.tar.gz" -C artifacts/release .
+        env:
+          TAG: ${{ needs.release-please.outputs.tag }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: scdl-${{ matrix.runtime }}
-          path: ${{ steps.package.outputs.archive }}
+          path: |
+            artifacts/*.zip
+            artifacts/*.tar.gz
           if-no-files-found: error
 
-  release:
-    name: draft the release
-    needs: publish
+  attach:
+    name: attach the binaries
+    needs: [release-please, publish]
+    if: needs.release-please.outputs.created == 'true'
     runs-on: ubuntu-latest
 
     # The only job that writes. Kept separate so the build jobs stay read-only.
     permissions:
-      contents: write # create the release
+      contents: write # upload the assets
       id-token: write # sign the provenance
       attestations: write # record it
 
@@ -108,7 +156,7 @@ jobs:
       - name: Checksum the archives
         working-directory: artifacts
         run: |
-          sha256sum *.zip | tee SHA256SUMS.txt
+          sha256sum *.zip *.tar.gz | tee SHA256SUMS.txt
 
       # Records in a public transparency log that these exact bytes came out of
       # this workflow, at this commit, on a GitHub runner. Free for a public
@@ -124,16 +172,22 @@ jobs:
       # extracted scdl.exe fails, because those bytes were never attested.
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: artifacts/*.zip
-
-      # Drafted rather than published: the release notes are worth reading
-      # before anyone downloads a binary that claims to know what SoundCloud
-      # actually serves.
-      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          tag_name: ${{ inputs.tag || github.ref_name }}
-          draft: true
-          generate_release_notes: true
-          files: |
+          subject-path: |
             artifacts/*.zip
-            artifacts/SHA256SUMS.txt
+            artifacts/*.tar.gz
+
+      # release-please already created the release and wrote its notes from the
+      # changelog, so this only hangs the binaries on it. For the few minutes
+      # between the two the release exists with no assets, which is the price of
+      # the tag having to exist before anything can be built against it.
+      - name: Upload the assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: |
+          gh release upload "$TAG" \
+            artifacts/*.zip \
+            artifacts/*.tar.gz \
+            artifacts/SHA256SUMS.txt \
+            --clobber
