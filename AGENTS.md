@@ -53,7 +53,8 @@ VSTest-bridge opt-in, it conflicts with the global.json runner, and the .NET 10 
 - **`nameof` over string literals** anywhere the string names a member.
 - **C# 14 extension members** where the call reads as a question about a value that already exists -
   `track.RankStreams()`, not `TrackStreams.Rank(track)`. The model types stay plain deserialization targets with no
-  behaviour. Two `extension(...)` blocks in one class currently trip CA1708; see `claude-memory/traps`.
+  behaviour. Two `extension(...)` blocks in one class currently trip CA1708, suppressed in `GlobalSuppressions.cs` with
+  the reasoning.
 - **One literal per fact.** A string repeated at three call sites is three chances to get it wrong -
   `AudioFileExtensions` exists for exactly that reason. A constant with a single user does not need a home.
 - Prefer `IReadOnlyList<T>` on public surfaces, `FrozenDictionary`/`FrozenSet` for lookup tables built once.
@@ -63,10 +64,9 @@ VSTest-bridge opt-in, it conflicts with the global.json runner, and the .NET 10 
 
 ## Analyzers are not advisory
 
-`Directory.Build.props` sets `TreatWarningsAsErrors`, the way microsoft/aspire does, so every compiler and analyzer
-warning fails the build. The only exceptions are the NuGet audit codes NU1901-NU1904, listed in `WarningsNotAsErrors`: a
-CVE advisory published against a transitive package is not a reason for an unrelated build to break that morning, and it
-stays visible as a warning.
+`Directory.Build.props` sets `TreatWarningsAsErrors`, so every compiler and analyzer warning fails the build. The only
+exceptions are the NuGet audit codes NU1901-NU1904, listed in `WarningsNotAsErrors`: a CVE advisory published against a
+transitive package is not a reason for an unrelated build to break that morning, and it stays visible as a warning.
 
 Watch the property name. `TreatWarningsAsErrors` is the boolean; `WarningsAsErrors` takes a *list* of warning IDs plus
 the token `nullable`, so `<WarningsAsErrors>true</WarningsAsErrors>` escalates nothing at all because "true" is not a
@@ -135,8 +135,8 @@ from the code that implements it.
 ## Instructions for agents
 
 This file is the always-on part. Task-specific procedures live in `.agents/skills`, one folder per skill with a
-`SKILL.md` carrying `name` and `description` frontmatter - the layout `microsoft/aspire` and `foxminchan/BookWorm` use.
-`CLAUDE.md` and `.github/copilot-instructions.md` both forward here, so every assistant reads one set of rules.
+`SKILL.md` carrying `name` and `description` frontmatter. `CLAUDE.md` and `.github/copilot-instructions.md` both forward
+here, so every assistant reads one set of rules.
 
 | Skill | Read it before |
 |-----------------------|------------------------------------------------------------------------------|
@@ -150,10 +150,6 @@ MCP servers are declared twice on purpose: `.mcp.json` for Claude Code and anyth
 project-scoped format, `.vscode/mcp.json` for VS Code, which only reads its own. Both point at the same Microsoft Learn
 endpoint; keep them in step.
 
-`claude-memory/` is committed too, so the working notes follow the repo to another machine. It is the long form: the
-reasoning behind each decision, the alternatives that were rejected, and how a trap was actually diagnosed - including
-the two probes that proved nothing. Read `claude-memory/traps` before touching the build configuration and
-`claude-memory/domain` before touching anything that talks to SoundCloud.
-
-Because it is committed, it holds no secrets, no tokens and no key fingerprints. A rule every contributor must follow
-belongs in this file or in a skill; `claude-memory/` holds the **why**, not the rule.
+There is also a `claude-memory/` folder on the maintainer's machine, holding the long form of every decision. It is
+**not** in git and nothing here depends on it. Anything a contributor needs belongs in this file or in a skill; if a
+rule seems to be missing its reason, the reason is missing from here and should be added.
