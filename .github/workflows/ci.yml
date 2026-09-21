@@ -10,10 +10,18 @@ on:
   push:
     branches: [main]
 
-  # Fires on open and on every later commit, so a pull request is always checked
-  # at its current head.
+  # No branch filter, on purpose. With `branches: [main]` a pull request opened
+  # against anything else - a stacked pull request onto its parent - was filtered
+  # out entirely, so none of the required checks ever ran. Retargeting it to main
+  # afterwards does not help: GitHub reports that as an `edited` action, which
+  # `pull_request` does not listen for by default, and the checks sit at
+  # "Expected - waiting for status to be reported" forever.
+  #
+  # Listening for `edited` would fix the retarget case and also rerun the whole
+  # build every time somebody corrects a typo in a description. Running on every
+  # pull request regardless of base is the cheaper answer and the more honest
+  # one: a change is worth checking wherever it is headed.
   pull_request:
-    branches: [main]
 
   workflow_dispatch:
 
