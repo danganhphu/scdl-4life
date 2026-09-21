@@ -11,12 +11,19 @@ namespace Scdl.Core.Tests;
 /// </summary>
 internal sealed class FfmpegProgressReaderTests
 {
-    /// <summary>One block of what ffmpeg writes, minus the keys nobody reads.</summary>
-    private static string Block(string size)
+    private static readonly TimeSpan Duration = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// One block of what ffmpeg writes. total_size is in it on purpose: it is
+    /// the key that looks like the answer and is not, because an MP4 muxer holds
+    /// every sample until the trailer and leaves it at the header length.
+    /// </summary>
+    private static string Block(string microseconds)
         => $"""
             bitrate= 160.4kbits/s
-            total_size={size}
-            out_time_us=1717333
+            total_size=44
+            out_time_us={microseconds}
+            out_time_ms={microseconds}
             out_time=00:00:01.717333
             speed=  34x
             progress=continue
@@ -24,61 +31,77 @@ internal sealed class FfmpegProgressReaderTests
             """;
 
     private static async Task<IReadOnlyList<TransferProgress>> ReadTicksAsync(string output,
-                                                                              CancellationToken cancellationToken)
+                                                                              CancellationToken cancellationToken,
+                                                                              TimeSpan? duration = null)
     {
         var progress = new RecordingProgress();
 
         using var reader = new StringReader(output);
 
-        await FfmpegProgressReader.ReadAsync(reader, progress, cancellationToken);
+        await FfmpegProgressReader.ReadAsync(reader, duration ?? Duration, progress, cancellationToken);
 
         return progress.Ticks;
     }
 
     [Test]
-    public async Task Every_block_that_carries_a_size_becomes_a_tick(CancellationToken cancellationToken)
+    public async Task Every_block_that_carries_a_position_becomes_a_tick(CancellationToken cancellationToken)
     {
-        var ticks = await ReadTicksAsync(Block("20480") + Block("61440"), cancellationToken);
+        var ticks = await ReadTicksAsync(Block("2500000") + Block("5000000"), cancellationToken);
 
         await Assert.That(ticks.Count).IsEqualTo(2);
-        await Assert.That(ticks[0].BytesTransferred).IsEqualTo(20480L);
-        await Assert.That(ticks[^1].BytesTransferred).IsEqualTo(61440L);
+        await Assert.That(ticks[0].StreamTime).IsEqualTo(TimeSpan.FromSeconds(2.5));
+        await Assert.That(ticks[^1].StreamTime).IsEqualTo(TimeSpan.FromSeconds(5));
     }
 
     /// <summary>
-    /// A mux has no total until ffmpeg exits, so a tick that invented one would
-    /// put the bar at a percentage nobody can stand behind.
+    /// The position is only worth anything against the running time, and that is
+    /// what makes the percentage real rather than an estimate.
     /// </summary>
     [Test]
-    public async Task A_tick_from_a_mux_carries_no_total(CancellationToken cancellationToken)
+    public async Task A_tick_measures_the_position_against_the_running_time(CancellationToken cancellationToken)
     {
-        var ticks = await ReadTicksAsync(Block("20480"), cancellationToken);
+        var ticks = await ReadTicksAsync(Block("2500000"), cancellationToken);
 
-        await Assert.That(ticks[0].TotalBytes).IsNull();
+        await Assert.That(ticks[0].IsStreamTime).IsTrue();
+        await Assert.That(ticks[0].StreamDuration).IsEqualTo(Duration);
+        await Assert.That(ticks[0].Fraction).IsEqualTo(0.25d);
     }
 
     /// <summary>ffmpeg writes N/A until the first packet reaches the output.</summary>
     [Test]
-    public async Task A_size_that_is_not_a_number_is_not_a_tick(CancellationToken cancellationToken)
+    public async Task A_position_that_is_not_a_number_is_not_a_tick(CancellationToken cancellationToken)
     {
-        var ticks = await ReadTicksAsync(Block("N/A") + Block("20480"), cancellationToken);
+        var ticks = await ReadTicksAsync(Block("N/A") + Block("2500000"), cancellationToken);
 
         await Assert.That(ticks.Count).IsEqualTo(1);
-        await Assert.That(ticks[0].BytesTransferred).IsEqualTo(20480L);
+        await Assert.That(ticks[0].StreamTime).IsEqualTo(TimeSpan.FromSeconds(2.5));
     }
 
     /// <summary>
-    /// total_size_estimate and the rest share the shape of the line that matters,
-    /// and a prefix match would read the wrong number off any of them.
+    /// out_time_ms sits one line below out_time_us in every block and holds the
+    /// same number, so a prefix match would report each position twice. total_size
+    /// is the other trap: it is the obvious key and it does not move.
     /// </summary>
     [Test]
-    [Arguments("total_size_estimate=9999")]
-    [Arguments("out_time_us=1717333")]
+    [Arguments("out_time_ms=1717333")]
+    [Arguments("total_size=44")]
     [Arguments("progress=end")]
     [Arguments("")]
-    public async Task No_other_key_is_mistaken_for_a_size(string line, CancellationToken cancellationToken)
+    public async Task No_other_key_is_mistaken_for_a_position(string line, CancellationToken cancellationToken)
     {
         var ticks = await ReadTicksAsync(line + Environment.NewLine, cancellationToken);
+
+        await Assert.That(ticks).IsEmpty();
+    }
+
+    /// <summary>
+    /// A playlist that declares no EXTINF gives nothing to measure against, and a
+    /// fraction of zero would be a number invented rather than read.
+    /// </summary>
+    [Test]
+    public async Task A_stream_of_unknown_length_reports_nothing(CancellationToken cancellationToken)
+    {
+        var ticks = await ReadTicksAsync(Block("2500000"), cancellationToken, TimeSpan.Zero);
 
         await Assert.That(ticks).IsEmpty();
     }
@@ -91,9 +114,9 @@ internal sealed class FfmpegProgressReaderTests
     [Test]
     public async Task The_stream_is_drained_with_no_sink_attached(CancellationToken cancellationToken)
     {
-        using var reader = new StringReader(Block("20480"));
+        using var reader = new StringReader(Block("2500000"));
 
-        await FfmpegProgressReader.ReadAsync(reader, progress: null, cancellationToken);
+        await FfmpegProgressReader.ReadAsync(reader, Duration, progress: null, cancellationToken);
 
         await Assert.That(await reader.ReadLineAsync(cancellationToken)).IsNull();
     }

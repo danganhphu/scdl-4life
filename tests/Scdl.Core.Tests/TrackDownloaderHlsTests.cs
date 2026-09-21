@@ -232,10 +232,11 @@ public sealed class TrackDownloaderHlsTests
                  It.IsAny<Uri>(),
                  It.IsAny<string>(),
                  It.IsAny<string>(),
+                 It.IsAny<TimeSpan>(),
                  It.IsAny<IProgress<TransferProgress>?>(),
                  It.IsAny<CancellationToken>()))
-             .Returns((Uri _, string outputPath, string _, IProgress<TransferProgress>? _, CancellationToken token)
-                 => File.WriteAllTextAsync(outputPath, "MUXED", token));
+             .Returns((Uri _, string outputPath, string _, TimeSpan _, IProgress<TransferProgress>? _,
+                       CancellationToken token) => File.WriteAllTextAsync(outputPath, "MUXED", token));
 
         var downloader = Downloader(handler, SoundCloud(), muxer);
 
@@ -256,29 +257,40 @@ public sealed class TrackDownloaderHlsTests
     /// <summary>
     /// For a fragmented MP4 track the mux is the whole transfer - nothing else
     /// moves a byte. Dropping the sink on the way to the muxer is what left the
-    /// progress bar at zero for the entire download.
+    /// progress bar at zero for the entire download, and the playlist's running
+    /// time has to go with it or a position means nothing.
     /// </summary>
     [Test]
-    public async Task Fragmented_mp4_reports_what_the_muxer_writes()
+    public async Task Fragmented_mp4_hands_the_muxer_the_running_time_and_reports_its_position()
     {
         using var directory = new TempDirectory();
 
+        // Two segments of ten seconds, so the total is one the parser had to add
+        // up rather than read off a single line.
         var handler = Serving(
-            new() { ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n", });
+            new()
+            {
+                ["aac_256k.m3u8"] =
+                    "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\na.m4s\n#EXTINF:10.0,\nb.m4s\n",
+            });
 
         var muxer = Muxer(available: true);
+        var seenDuration = TimeSpan.Zero;
 
         muxer.Setup(media => media.MuxAsync(
                  It.IsAny<Uri>(),
                  It.IsAny<string>(),
                  It.IsAny<string>(),
+                 It.IsAny<TimeSpan>(),
                  It.IsAny<IProgress<TransferProgress>?>(),
                  It.IsAny<CancellationToken>()))
-             .Returns((Uri _, string outputPath, string _, IProgress<TransferProgress>? sink, CancellationToken token)
-                 =>
+             .Returns((Uri _, string outputPath, string _, TimeSpan duration, IProgress<TransferProgress>? sink,
+                       CancellationToken token) =>
              {
-                 sink?.Report(new(2048, null));
-                 sink?.Report(new(4096, null));
+                 seenDuration = duration;
+
+                 sink?.Report(TransferProgress.FromStreamTime(TimeSpan.FromSeconds(5), duration));
+                 sink?.Report(TransferProgress.FromStreamTime(TimeSpan.FromSeconds(15), duration));
 
                  return File.WriteAllTextAsync(outputPath, "MUXED", token);
              });
@@ -288,9 +300,10 @@ public sealed class TrackDownloaderHlsTests
 
         await downloader.DownloadAsync(Request(directory, TrackWith("aac_256k")), progress, CancellationToken.None);
 
+        await Assert.That(seenDuration).IsEqualTo(TimeSpan.FromSeconds(20));
         await Assert.That(progress.Ticks.Count).IsEqualTo(2);
-        await Assert.That(progress.Ticks[^1].BytesTransferred).IsEqualTo(4096L);
-        await Assert.That(progress.Ticks[^1].TotalBytes).IsNull();
+        await Assert.That(progress.Ticks[^1].IsStreamTime).IsTrue();
+        await Assert.That(progress.Ticks[^1].Fraction).IsEqualTo(0.75d);
     }
 
     /// <summary>
@@ -316,9 +329,10 @@ public sealed class TrackDownloaderHlsTests
                  It.IsAny<Uri>(),
                  It.IsAny<string>(),
                  It.IsAny<string>(),
+                 It.IsAny<TimeSpan>(),
                  It.IsAny<IProgress<TransferProgress>?>(),
                  It.IsAny<CancellationToken>()))
-             .Returns((Uri _, string outputPath, string container, IProgress<TransferProgress>? _,
+             .Returns((Uri _, string outputPath, string container, TimeSpan _, IProgress<TransferProgress>? _,
                        CancellationToken token) =>
              {
                  seenPath = outputPath;
@@ -352,9 +366,11 @@ public sealed class TrackDownloaderHlsTests
                  It.IsAny<Uri>(),
                  It.IsAny<string>(),
                  It.IsAny<string>(),
+                 It.IsAny<TimeSpan>(),
                  It.IsAny<IProgress<TransferProgress>?>(),
                  It.IsAny<CancellationToken>()))
-             .Returns((Uri _, string outputPath, string _, IProgress<TransferProgress>? _, CancellationToken _) =>
+             .Returns((Uri _, string outputPath, string _, TimeSpan _, IProgress<TransferProgress>? _,
+                       CancellationToken _) =>
              {
                  // A real muxer can fail after it has already created its output.
                  File.WriteAllText(outputPath, "half a file");

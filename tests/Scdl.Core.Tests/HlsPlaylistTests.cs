@@ -29,6 +29,46 @@ public sealed class HlsPlaylistTests
         await Assert.That(playlist.IsEncrypted).IsFalse();
     }
 
+    /// <summary>
+    /// The running time is what a mux measures itself against. Bytes on disk say
+    /// nothing there: an MP4 muxer holds every sample until it writes the
+    /// trailer, so the file sits at its header length until the very end.
+    /// </summary>
+    [Test]
+    public async Task Parse_adds_up_the_segment_durations()
+    {
+        const string content = """
+                               #EXTM3U
+                               #EXTINF:10.5,
+                               a.mp3
+                               #EXTINF:9.5,with a title
+                               b.mp3
+                               #EXT-X-ENDLIST
+                               """;
+
+        var playlist = HlsPlaylist.Parse(content, PlaylistUri);
+
+        await Assert.That(playlist.TotalDuration).IsEqualTo(TimeSpan.FromSeconds(20));
+    }
+
+    /// <summary>
+    /// Zero rather than a guess. A fraction of an invented total would be the one
+    /// number this tool must never show.
+    /// </summary>
+    [Test]
+    public async Task Parse_reports_no_duration_when_the_playlist_declares_none()
+    {
+        const string content = """
+                               #EXTM3U
+                               a.mp3
+                               #EXT-X-ENDLIST
+                               """;
+
+        var playlist = HlsPlaylist.Parse(content, PlaylistUri);
+
+        await Assert.That(playlist.TotalDuration).IsEqualTo(TimeSpan.Zero);
+    }
+
     [Test]
     public async Task Parse_resolves_relative_segment_uris_against_the_playlist()
     {
