@@ -7,9 +7,9 @@
 Downloads a SoundCloud track at the best bitrate SoundCloud will actually serve, and tells you what that bitrate is.
 
 ```text
-> scdl formats "https://on.soundcloud.com/..."
+> scdl formats "https://soundcloud.com/example-artist/example-track"
 
-NSon Remix - Nguoi Phan Boi x La Xa Lia Canh
+Example Artist - Example Track
 ╭──────────┬──────────┬───────┬─────────────┬───────────────────────────────────╮
 │ Preset   │  Bitrate │ Codec │ Delivery    │ Note                              │
 ├──────────┼──────────┼───────┼─────────────┼───────────────────────────────────┤
@@ -75,12 +75,12 @@ scdl get "<url>" --oauth "<go-plus-token>" -o D:\Music
 ```
 
 ```text
-> scdl get "https://on.soundcloud.com/..." -o D:\Music
+> scdl get "https://soundcloud.com/example-artist/example-track" -o D:\Music
 
-NSon Remix - Nguoi Phan Boi x La Xa Lia Canh
+Example Artist - Example Track
   No original master offered; took the best transcoding instead.
   source  aac_160k (160 kbps AAC)
-  saved   D:\Music\NSon Remix - Nguoi Phan Boi x La Xa Lia Canh.m4a (7.7 MiB)
+  saved   D:\Music\Example Artist - Example Track.m4a (7.7 MiB)
 ```
 
 `get` takes a set or playlist URL too. One dead track does not abandon the rest, and each track is tagged with the set
