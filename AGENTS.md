@@ -126,6 +126,28 @@ imperative lowercase subject. A body when the change needs a why.
 
 **No AI attribution trailers.** No `Co-Authored-By` for a tool, no "generated with" line.
 
+Commit types are not cosmetic here: release-please reads them to decide the next version. `feat:` bumps the minor,
+`fix:` the patch, `feat!:` or a `BREAKING CHANGE:` trailer bumps harder, and everything else lands in the changelog's
+hidden section. Mislabelling a feature as a chore is how a release quietly fails to happen.
+
+## Versioning and releases
+
+**The git tag is the only source of truth for the version.** MinVer reads the nearest `v*` tag at build time; an
+untagged build reports `0.0.0-alpha.0.N`, which is correct, because it is not a release.
+
+Nobody types `git tag`. Merging to `main` runs `release.yml`, whose first job keeps a release pull request up to date
+with the next version and a changelog. Merging *that* pull request is the act of releasing: it tags, creates the GitHub
+release, and only then do the build jobs run and hang the archives on it.
+
+- **`version.txt`** is written by release-please and **nothing in the build reads it.** Editing it changes no binary.
+  It exists because release-please's `simple` strategy keeps one; treat it as the bot's bookkeeping.
+- The three jobs share one workflow because a tag pushed by `GITHUB_TOKEN` deliberately does not start another workflow
+  run. A separate tag-triggered workflow would never fire.
+- Windows gets a `.zip`, Unix a `.tar.gz`. Not a style choice: zip carries no permission bits, so a Linux user
+  unpacking one gets a binary without its executable flag.
+- Releases carry `SHA256SUMS.txt` and a build provenance attestation. Neither is code signing, and Windows still warns
+  about an unsigned executable; a certificate costs money every year and this project does not buy one.
+
 ## Docs
 
 `README.md` is generated from `README.source.md` by MarkdownSnippets during the build. Edit the source, never the
