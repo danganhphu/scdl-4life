@@ -3,6 +3,9 @@
         <Project Path="src/Scdl.Core/Scdl.Core.csproj" />
         <Project Path="src/Scdl.Cli/Scdl.Cli.csproj" />
     </Folder>
+    <Folder Name="/src/Aspire/">
+        <Project Path="src/Aspire/Scdl.AppHost/Scdl.AppHost.csproj" />
+    </Folder>
     <Folder Name="/tests/">
         <Project Path="tests/Scdl.Core.Tests/Scdl.Core.Tests.csproj" />
         <Project Path="tests/Scdl.Cli.Tests/Scdl.Cli.Tests.csproj" />
@@ -19,6 +22,7 @@
         <File Path=".release-please-manifest.json" />
         <File Path="release-please-config.json" />
         <File Path="AGENTS.md" />
+        <File Path="aspire.config.json" />
         <File Path="CLAUDE.md" />
         <File Path="global.json" />
         <File Path="nuget.config" />

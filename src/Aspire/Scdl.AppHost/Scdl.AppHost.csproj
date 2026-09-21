@@ -1,0 +1,28 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.5.4">
+
+  <!-- TargetFramework, LangVersion, ImplicitUsings and Nullable are inherited
+       from Directory.Build.props. The template restates all four; there is no
+       reason for this project to be able to disagree with the rest of the
+       solution about them. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>8b40f1c8-333a-4956-9165-91c944a0ad4a</UserSecretsId>
+
+    <!-- Overrides the solution default, the way the test projects do. An AppHost
+         is development-time orchestration: it is never shipped, let alone
+         published Native AOT, and the Aspire.Hosting packages it grows as
+         resources are wired are not trim clean. Holding it to rules it cannot
+         satisfy would only teach whoever adds the first integration to reach for
+         a suppression. Nothing here touches Scdl.Cli's AOT path. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+
+    <!-- Overrides the solution default. Nothing consumes XML docs for an entry
+         point assembly with no public surface. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

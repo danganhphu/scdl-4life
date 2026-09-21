@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/Aspire/Scdl.AppHost/Scdl.AppHost.csproj"
+  }
+}
