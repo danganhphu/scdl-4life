@@ -31,11 +31,11 @@ internal sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpRespon
                 }
             }
 
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+            return new(HttpStatusCode.NotFound);
         });
 
     public HttpClient CreateClient()
-        => new(this, disposeHandler: false) { BaseAddress = new Uri("https://api-v2.soundcloud.com") };
+        => new(this, disposeHandler: false) { BaseAddress = new("https://api-v2.soundcloud.com") };
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
                                                            CancellationToken cancellationToken)

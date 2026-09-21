@@ -30,8 +30,8 @@ public sealed class ConsoleRendererTests
         {
             Id = 1,
             Title = "Song",
-            User = new SoundCloudUser { Username = "Artist" },
-            Media = new Media
+            User = new() { Username = "Artist" },
+            Media = new()
             {
                 Transcodings =
                 [
@@ -39,7 +39,7 @@ public sealed class ConsoleRendererTests
                     {
                         Url = $"https://api-v2.soundcloud.com/media/1/{preset}/stream/hls",
                         Preset = preset,
-                        Format = new TranscodingFormat { Protocol = "hls", MimeType = "audio/mpeg" },
+                        Format = new() { Protocol = "hls", MimeType = "audio/mpeg" },
                     }),
                 ],
             },
@@ -146,10 +146,7 @@ public sealed class ConsoleRendererTests
         var console = Console();
 
         new ConsoleRenderer(console).Saved(
-            new DownloadResult
-            {
-                FilePath = @"C:\music\Artist - Song.wav", Source = DownloadSource.OriginalMaster, Bytes = 1024,
-            });
+            new() { FilePath = @"C:\music\Artist - Song.wav", Source = DownloadSource.OriginalMaster, Bytes = 1024, });
 
         await Assert.That(console.Output.Contains("original master", StringComparison.Ordinal)).IsTrue();
         await Assert.That(console.Output.Contains("1.0 KiB", StringComparison.Ordinal)).IsTrue();
@@ -165,7 +162,7 @@ public sealed class ConsoleRendererTests
         var console = Console();
 
         new ConsoleRenderer(console).Saved(
-            new DownloadResult
+            new()
             {
                 FilePath = @"C:\music\Artist - Song.mp3",
                 Source = DownloadSource.Transcoding,

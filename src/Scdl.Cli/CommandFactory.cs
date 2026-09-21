@@ -70,8 +70,7 @@ internal static class CommandFactory
 
         var outOption = new Option<DirectoryInfo>("--out", "-o")
         {
-            Description = "Output directory.",
-            DefaultValueFactory = _ => new DirectoryInfo(Environment.CurrentDirectory),
+            Description = "Output directory.", DefaultValueFactory = _ => new(Environment.CurrentDirectory),
         };
 
         var presetOption = new Option<string?>("--format", "-f")
@@ -105,7 +104,7 @@ internal static class CommandFactory
         };
 
         command.SetAction((parseResult, cancellationToken) => RunGetAsync(
-            new GetArguments(
+            new(
                 parseResult.GetValue(urlArgument)!,
                 parseResult.GetValue(outOption)!,
                 parseResult.GetValue(presetOption),
@@ -216,14 +215,14 @@ internal static class CommandFactory
             }
         }
 
-        if (failures > 0)
+        if (failures <= 0)
         {
-            renderer.Warning($"{failures} of {tracks.Count} track(s) failed.");
-
-            return ScdlExitCode.Failure;
+            return ScdlExitCode.Success;
         }
 
-        return ScdlExitCode.Success;
+        renderer.Warning($"{failures} of {tracks.Count} track(s) failed.");
+
+        return ScdlExitCode.Failure;
     }
 
     private static async Task<DownloadResult> TransferAsync(IAnsiConsole console,
@@ -239,8 +238,8 @@ internal static class CommandFactory
                      .Columns(
                          new TaskDescriptionColumn(),
                          new ProgressBarColumn(),
-                         new PercentageColumn(),
-                         new DownloadedColumn(),
+                         new UnknownTotalPercentageColumn(),
+                         new UnknownTotalDownloadedColumn(),
                          new TransferSpeedColumn())
                      .StartAsync(async context =>
                      {
@@ -257,7 +256,12 @@ internal static class CommandFactory
                              }
                              else
                              {
-                                 // HLS has no total until the final segment lands.
+                                 // HLS has no total until the final segment lands,
+                                 // and a mux never gets one at all. The ceiling has
+                                 // to stay out of reach as well: Spectre calls a
+                                 // task finished the moment Value meets MaxValue,
+                                 // and a finished task freezes as a full bar.
+                                 task.MaxValue = double.PositiveInfinity;
                                  task.IsIndeterminate = true;
                              }
 

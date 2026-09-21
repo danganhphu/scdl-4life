@@ -21,8 +21,7 @@ internal sealed class TempDirectory : IDisposable
     public string FullPath { get; }
 
     /// <summary>Every file left behind, so a test can assert that nothing partial survived.</summary>
-    public IReadOnlyList<string> Files
-        => Directory.GetFiles(FullPath, "*", SearchOption.AllDirectories);
+    public IReadOnlyList<string> Files => Directory.GetFiles(FullPath, "*", SearchOption.AllDirectories);
 
     public void Dispose()
     {

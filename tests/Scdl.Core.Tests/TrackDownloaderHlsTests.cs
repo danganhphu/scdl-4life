@@ -20,19 +20,6 @@ namespace Scdl.Core.Tests;
 /// </summary>
 public sealed class TrackDownloaderHlsTests
 {
-    /// <summary>
-    /// Records synchronously, unlike <see cref="Progress{T}"/>, which posts
-    /// through the synchronization context and would leave the tail of the
-    /// sequence in flight when the assertions run.
-    /// </summary>
-    private sealed class RecordingProgress : IProgress<TransferProgress>
-    {
-        public List<TransferProgress> Ticks { get; } = [];
-
-        public void Report(TransferProgress value)
-            => Ticks.Add(value);
-    }
-
     private const string PlaylistHost = "https://cf-hls-media.sndcdn.com/playlist";
 
     /// <summary>Two at a time, so a three segment playlist spans more than one window.</summary>
@@ -58,8 +45,8 @@ public sealed class TrackDownloaderHlsTests
         {
             Id = 1,
             Title = "Song",
-            User = new SoundCloudUser { Username = "Artist" },
-            Media = new Media
+            User = new() { Username = "Artist" },
+            Media = new()
             {
                 Transcodings =
                 [
@@ -67,7 +54,7 @@ public sealed class TrackDownloaderHlsTests
                     {
                         Url = PlaylistUrlFor(preset),
                         Preset = preset,
-                        Format = new TranscodingFormat { Protocol = "hls", MimeType = "audio/mpeg" },
+                        Format = new() { Protocol = "hls", MimeType = "audio/mpeg" },
                     }),
                 ],
             },
@@ -87,12 +74,15 @@ public sealed class TrackDownloaderHlsTests
 
             if (name == failingSegment)
             {
-                return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+                return new(HttpStatusCode.InternalServerError);
             }
 
             if (playlists.TryGetValue(name, out var playlist))
             {
-                return new(HttpStatusCode.OK) { Content = new StringContent(playlist, Encoding.UTF8, "application/x-mpegURL"), };
+                return new(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(playlist, Encoding.UTF8, "application/x-mpegURL"),
+                };
             }
 
             if (segments is not null && segments.TryGetValue(name, out var body))
@@ -100,7 +90,7 @@ public sealed class TrackDownloaderHlsTests
                 return new(HttpStatusCode.OK) { Content = new ByteArrayContent(Encoding.UTF8.GetBytes(body)), };
             }
 
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+            return new(HttpStatusCode.NotFound);
         });
 
     private static Mock<ISoundCloudClient> SoundCloud()
@@ -111,9 +101,9 @@ public sealed class TrackDownloaderHlsTests
         // location is the same URL. What matters here is the reassembly, not the
         // signing, which SoundCloudClientTests covers.
         mock.Setup(client => client.GetStreamUriAsync(
-                       It.IsAny<Track>(),
-                       It.IsAny<Transcoding>(),
-                       It.IsAny<CancellationToken>()))
+                It.IsAny<Track>(),
+                It.IsAny<Transcoding>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync((Track _, Transcoding transcoding, CancellationToken _)
                 => Result.Success(new Uri(transcoding.Url!)));
 
@@ -161,8 +151,8 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string> { ["mp3_1_0.m3u8"] = MediaPlaylist("a.ts", "b.ts", "c.ts"), },
-            new Dictionary<string, string> { ["a.ts"] = "AAAA", ["b.ts"] = "BB", ["c.ts"] = "CCCCCC", });
+            new() { ["mp3_1_0.m3u8"] = MediaPlaylist("a.ts", "b.ts", "c.ts"), },
+            new() { ["a.ts"] = "AAAA", ["b.ts"] = "BB", ["c.ts"] = "CCCCCC", });
 
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
@@ -186,8 +176,8 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string> { ["mp3_1_0.m3u8"] = MediaPlaylist("a.ts", "b.ts"), },
-            new Dictionary<string, string> { ["a.ts"] = "AAAA", ["b.ts"] = "BB", });
+            new() { ["mp3_1_0.m3u8"] = MediaPlaylist("a.ts", "b.ts"), },
+            new() { ["a.ts"] = "AAAA", ["b.ts"] = "BB", });
 
         var progress = new RecordingProgress();
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
@@ -195,7 +185,7 @@ public sealed class TrackDownloaderHlsTests
         await downloader.DownloadAsync(Request(directory, TrackWith("mp3_1_0")), progress, CancellationToken.None);
 
         await Assert.That(progress.Ticks.Count).IsEqualTo(2);
-        await Assert.That(progress.Ticks.TrueForAll(tick => tick.TotalBytes is null)).IsTrue();
+        await Assert.That(progress.Ticks.All(tick => tick.TotalBytes is null)).IsTrue();
         await Assert.That(progress.Ticks[^1].BytesTransferred).IsEqualTo(6L);
     }
 
@@ -209,12 +199,12 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string>
+            new()
             {
                 ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n",
                 ["mp3_1_0.m3u8"] = MediaPlaylist("a.ts"),
             },
-            new Dictionary<string, string> { ["a.ts"] = "MP3", });
+            new() { ["a.ts"] = "MP3", });
 
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
@@ -234,19 +224,17 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string>
-            {
-                ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n",
-            });
+            new() { ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n", });
 
         var muxer = Muxer(available: true);
 
         muxer.Setup(media => media.MuxAsync(
-                        It.IsAny<Uri>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>(),
-                        It.IsAny<CancellationToken>()))
-             .Returns((Uri _, string outputPath, string _, CancellationToken token)
+                 It.IsAny<Uri>(),
+                 It.IsAny<string>(),
+                 It.IsAny<string>(),
+                 It.IsAny<IProgress<TransferProgress>?>(),
+                 It.IsAny<CancellationToken>()))
+             .Returns((Uri _, string outputPath, string _, IProgress<TransferProgress>? _, CancellationToken token)
                  => File.WriteAllTextAsync(outputPath, "MUXED", token));
 
         var downloader = Downloader(handler, SoundCloud(), muxer);
@@ -266,6 +254,46 @@ public sealed class TrackDownloaderHlsTests
     }
 
     /// <summary>
+    /// For a fragmented MP4 track the mux is the whole transfer - nothing else
+    /// moves a byte. Dropping the sink on the way to the muxer is what left the
+    /// progress bar at zero for the entire download.
+    /// </summary>
+    [Test]
+    public async Task Fragmented_mp4_reports_what_the_muxer_writes()
+    {
+        using var directory = new TempDirectory();
+
+        var handler = Serving(
+            new() { ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n", });
+
+        var muxer = Muxer(available: true);
+
+        muxer.Setup(media => media.MuxAsync(
+                 It.IsAny<Uri>(),
+                 It.IsAny<string>(),
+                 It.IsAny<string>(),
+                 It.IsAny<IProgress<TransferProgress>?>(),
+                 It.IsAny<CancellationToken>()))
+             .Returns((Uri _, string outputPath, string _, IProgress<TransferProgress>? sink, CancellationToken token)
+                 =>
+             {
+                 sink?.Report(new(2048, null));
+                 sink?.Report(new(4096, null));
+
+                 return File.WriteAllTextAsync(outputPath, "MUXED", token);
+             });
+
+        var progress = new RecordingProgress();
+        var downloader = Downloader(handler, SoundCloud(), muxer);
+
+        await downloader.DownloadAsync(Request(directory, TrackWith("aac_256k")), progress, CancellationToken.None);
+
+        await Assert.That(progress.Ticks.Count).IsEqualTo(2);
+        await Assert.That(progress.Ticks[^1].BytesTransferred).IsEqualTo(4096L);
+        await Assert.That(progress.Ticks[^1].TotalBytes).IsNull();
+    }
+
+    /// <summary>
     /// ffmpeg picks its muxer from the extension of the file it is told to
     /// write, and that file is still a .part at the time. Inferring the
     /// container from the path produced "Unable to choose an output format" and
@@ -277,10 +305,7 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string>
-            {
-                ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n",
-            });
+            new() { ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n", });
 
         var muxer = Muxer(available: true);
 
@@ -288,11 +313,13 @@ public sealed class TrackDownloaderHlsTests
         string? seenContainer = null;
 
         muxer.Setup(media => media.MuxAsync(
-                        It.IsAny<Uri>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>(),
-                        It.IsAny<CancellationToken>()))
-             .Returns((Uri _, string outputPath, string container, CancellationToken token) =>
+                 It.IsAny<Uri>(),
+                 It.IsAny<string>(),
+                 It.IsAny<string>(),
+                 It.IsAny<IProgress<TransferProgress>?>(),
+                 It.IsAny<CancellationToken>()))
+             .Returns((Uri _, string outputPath, string container, IProgress<TransferProgress>? _,
+                       CancellationToken token) =>
              {
                  seenPath = outputPath;
                  seenContainer = container;
@@ -317,19 +344,17 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string>
-            {
-                ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n",
-            });
+            new() { ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n", });
 
         var muxer = Muxer(available: true);
 
         muxer.Setup(media => media.MuxAsync(
-                        It.IsAny<Uri>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>(),
-                        It.IsAny<CancellationToken>()))
-             .Returns((Uri _, string outputPath, string _, CancellationToken _) =>
+                 It.IsAny<Uri>(),
+                 It.IsAny<string>(),
+                 It.IsAny<string>(),
+                 It.IsAny<IProgress<TransferProgress>?>(),
+                 It.IsAny<CancellationToken>()))
+             .Returns((Uri _, string outputPath, string _, IProgress<TransferProgress>? _, CancellationToken _) =>
              {
                  // A real muxer can fail after it has already created its output.
                  File.WriteAllText(outputPath, "half a file");
@@ -340,9 +365,11 @@ public sealed class TrackDownloaderHlsTests
         var downloader = Downloader(handler, SoundCloud(), muxer);
 
         var exception = await Assert.ThrowsAsync<ScdlException>(async () => await downloader.DownloadAsync(
-                            Request(directory, TrackWith("aac_256k")),
-                            progress: null,
-                            CancellationToken.None));
+                                                                                Request(
+                                                                                    directory,
+                                                                                    TrackWith("aac_256k")),
+                                                                                progress: null,
+                                                                                CancellationToken.None));
 
         await Assert.That(exception!.Code).IsEqualTo(ScdlErrorCode.MuxerFailed);
         await Assert.That(directory.Files.Count).IsEqualTo(0);
@@ -354,17 +381,16 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string>
-            {
-                ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n",
-            });
+            new() { ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-MAP:URI=\"init.mp4\"\n#EXTINF:10.0,\nseg.m4s\n", });
 
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
         var exception = await Assert.ThrowsAsync<ScdlException>(async () => await downloader.DownloadAsync(
-                            Request(directory, TrackWith("aac_256k")),
-                            progress: null,
-                            CancellationToken.None));
+                                                                                Request(
+                                                                                    directory,
+                                                                                    TrackWith("aac_256k")),
+                                                                                progress: null,
+                                                                                CancellationToken.None));
 
         await Assert.That(exception!.Code).IsEqualTo(ScdlErrorCode.NoRungDownloadable);
         await Assert.That(exception.Message.Contains("ffmpeg", StringComparison.Ordinal)).IsTrue();
@@ -381,19 +407,21 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string>
+            new()
             {
                 ["aac_256k.m3u8"] = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=256000\nvariant.m3u8\n",
                 ["mp3_1_0.m3u8"] = MediaPlaylist("a.ts"),
             },
-            new Dictionary<string, string> { ["a.ts"] = "MP3", });
+            new() { ["a.ts"] = "MP3", });
 
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
         var exception = await Assert.ThrowsAsync<ScdlException>(async () => await downloader.DownloadAsync(
-                            Request(directory, TrackWith("aac_256k", "mp3_1_0")),
-                            progress: null,
-                            CancellationToken.None));
+                                                                                Request(
+                                                                                    directory,
+                                                                                    TrackWith("aac_256k", "mp3_1_0")),
+                                                                                progress: null,
+                                                                                CancellationToken.None));
 
         await Assert.That(exception!.Code).IsEqualTo(ScdlErrorCode.MasterPlaylistUnexpected);
         await Assert.That(directory.Files.Count).IsEqualTo(0);
@@ -405,7 +433,7 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string>
+            new()
             {
                 ["mp3_1_0.m3u8"] =
                     "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"key.bin\"\n#EXTINF:10.0,\na.ts\n",
@@ -414,9 +442,11 @@ public sealed class TrackDownloaderHlsTests
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
         var exception = await Assert.ThrowsAsync<ScdlException>(async () => await downloader.DownloadAsync(
-                            Request(directory, TrackWith("mp3_1_0")),
-                            progress: null,
-                            CancellationToken.None));
+                                                                                Request(
+                                                                                    directory,
+                                                                                    TrackWith("mp3_1_0")),
+                                                                                progress: null,
+                                                                                CancellationToken.None));
 
         await Assert.That(exception!.Code).IsEqualTo(ScdlErrorCode.EncryptedPlaylist);
     }
@@ -426,14 +456,16 @@ public sealed class TrackDownloaderHlsTests
     {
         using var directory = new TempDirectory();
 
-        var handler = Serving(new Dictionary<string, string> { ["mp3_1_0.m3u8"] = MediaPlaylist(), });
+        var handler = Serving(new() { ["mp3_1_0.m3u8"] = MediaPlaylist(), });
 
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
         var exception = await Assert.ThrowsAsync<ScdlException>(async () => await downloader.DownloadAsync(
-                            Request(directory, TrackWith("mp3_1_0")),
-                            progress: null,
-                            CancellationToken.None));
+                                                                                Request(
+                                                                                    directory,
+                                                                                    TrackWith("mp3_1_0")),
+                                                                                progress: null,
+                                                                                CancellationToken.None));
 
         await Assert.That(exception!.Code).IsEqualTo(ScdlErrorCode.PlaylistHasNoSegments);
         await Assert.That(directory.Files.Count).IsEqualTo(0);
@@ -449,16 +481,16 @@ public sealed class TrackDownloaderHlsTests
         using var directory = new TempDirectory();
 
         var handler = Serving(
-            new Dictionary<string, string> { ["mp3_1_0.m3u8"] = MediaPlaylist("a.ts", "b.ts", "c.ts"), },
-            new Dictionary<string, string> { ["a.ts"] = "AAAA", ["c.ts"] = "CCCC", },
+            new() { ["mp3_1_0.m3u8"] = MediaPlaylist("a.ts", "b.ts", "c.ts"), },
+            new() { ["a.ts"] = "AAAA", ["c.ts"] = "CCCC", },
             failingSegment: "b.ts");
 
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
         await Assert.ThrowsAsync<HttpRequestException>(async () => await downloader.DownloadAsync(
-            Request(directory, TrackWith("mp3_1_0")),
-            progress: null,
-            CancellationToken.None));
+                                                                       Request(directory, TrackWith("mp3_1_0")),
+                                                                       progress: null,
+                                                                       CancellationToken.None));
 
         await Assert.That(directory.Files.Count).IsEqualTo(0);
     }
@@ -472,13 +504,16 @@ public sealed class TrackDownloaderHlsTests
     {
         using var directory = new TempDirectory();
 
-        var handler = Serving(new Dictionary<string, string>());
+        var handler = Serving(new());
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
         var exception = await Assert.ThrowsAsync<ScdlException>(async () => await downloader.DownloadAsync(
-                            Request(directory, TrackWith("mp3_1_0"), preset: "flac"),
-                            progress: null,
-                            CancellationToken.None));
+                                                                                Request(
+                                                                                    directory,
+                                                                                    TrackWith("mp3_1_0"),
+                                                                                    preset: "flac"),
+                                                                                progress: null,
+                                                                                CancellationToken.None));
 
         await Assert.That(exception!.Code).IsEqualTo(ScdlErrorCode.PresetNotOffered);
         await Assert.That(exception.Message.Contains("mp3_1_0", StringComparison.Ordinal)).IsTrue();
@@ -489,13 +524,15 @@ public sealed class TrackDownloaderHlsTests
     {
         using var directory = new TempDirectory();
 
-        var handler = Serving(new Dictionary<string, string>());
+        var handler = Serving(new());
         var downloader = Downloader(handler, SoundCloud(), Muxer(available: false));
 
         var exception = await Assert.ThrowsAsync<ScdlException>(async () => await downloader.DownloadAsync(
-                            Request(directory, new Track { Id = 1, Title = "Song", }),
-                            progress: null,
-                            CancellationToken.None));
+                                                                                Request(
+                                                                                    directory,
+                                                                                    new() { Id = 1, Title = "Song", }),
+                                                                                progress: null,
+                                                                                CancellationToken.None));
 
         await Assert.That(exception!.Code).IsEqualTo(ScdlErrorCode.NoPlayableStream);
     }

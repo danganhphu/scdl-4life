@@ -167,7 +167,7 @@ public sealed class SoundCloudClientTests
     [Test]
     public async Task GetStreamUriAsync_reports_an_advertised_but_unserved_rung_as_a_failure()
     {
-        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var handler = new StubHttpMessageHandler(_ => new(HttpStatusCode.NotFound));
         var client = CreateClient(handler, ClientIdProvider().Object);
 
         var transcoding = new Transcoding
@@ -175,7 +175,7 @@ public sealed class SoundCloudClientTests
             Url = "https://api-v2.soundcloud.com/media/1/x/stream/hls", Preset = "abr_sq",
         };
 
-        var result = await client.GetStreamUriAsync(new Track { Id = 1 }, transcoding, CancellationToken.None);
+        var result = await client.GetStreamUriAsync(new() { Id = 1 }, transcoding, CancellationToken.None);
 
         await Assert.That(result.IsFailure).IsTrue();
         await Assert.That(result.Error.Code).IsEqualTo(ScdlErrorCode.RungNotServed);
@@ -189,8 +189,8 @@ public sealed class SoundCloudClientTests
         var client = CreateClient(handler, ClientIdProvider().Object);
 
         var result = await client.GetStreamUriAsync(
-                         new Track { Id = 1 },
-                         new Transcoding { Url = null, Preset = "mp3_1_0" },
+                         new() { Id = 1 },
+                         new() { Url = null, Preset = "mp3_1_0" },
                          CancellationToken.None);
 
         await Assert.That(result.IsFailure).IsTrue();
@@ -209,7 +209,7 @@ public sealed class SoundCloudClientTests
         var client = CreateClient(handler, ClientIdProvider().Object);
 
         var uri = await client.TryGetOriginalUriAsync(
-                      new Track { Id = 1, Downloadable = false },
+                      new() { Id = 1, Downloadable = false },
                       CancellationToken.None);
 
         await Assert.That(uri).IsNull();
@@ -224,7 +224,7 @@ public sealed class SoundCloudClientTests
         var client = CreateClient(handler, ClientIdProvider().Object);
 
         var uri = await client.TryGetOriginalUriAsync(
-                      new Track { Id = 1, Downloadable = true, HasDownloadsLeft = true },
+                      new() { Id = 1, Downloadable = true, HasDownloadsLeft = true },
                       CancellationToken.None);
 
         await Assert.That(uri!.AbsoluteUri).IsEqualTo("https://cdn.invalid/original.wav");

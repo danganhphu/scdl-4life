@@ -12,11 +12,11 @@ public sealed class TrackStreamsTests
             Url = $"https://api-v2.soundcloud.com/media/soundcloud:tracks:1/{preset}/stream/{protocol}",
             Preset = preset,
             Snipped = snipped,
-            Format = new TranscodingFormat { Protocol = protocol, MimeType = "audio/mpeg" },
+            Format = new() { Protocol = protocol, MimeType = "audio/mpeg" },
         };
 
     private static Track TrackWith(params Transcoding[] transcodings)
-        => new() { Id = 1, Title = "Song", Media = new Media { Transcodings = transcodings }, };
+        => new() { Id = 1, Title = "Song", Media = new() { Transcodings = transcodings }, };
 
     [Test]
     public async Task Rank_puts_the_highest_bitrate_first()

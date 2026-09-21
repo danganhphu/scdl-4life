@@ -41,7 +41,7 @@ public sealed class FileNamingTests
     [Test]
     public async Task Sanitize_always_produces_a_legal_path_component()
     {
-        var faker = new Faker { Random = new Randomizer(localSeed: 20260917) };
+        var faker = new Faker { Random = new(localSeed: 20260917) };
         var invalid = Path.GetInvalidFileNameChars();
 
         for (var i = 0; i < 200; i++)
@@ -63,8 +63,8 @@ public sealed class FileNamingTests
         {
             Id = 1,
             Title = "Song",
-            User = new SoundCloudUser { Username = "uploader-account" },
-            PublisherMetadata = new PublisherMetadata { Artist = "Real Artist" },
+            User = new() { Username = "uploader-account" },
+            PublisherMetadata = new() { Artist = "Real Artist" },
         };
 
         await Assert.That(FileNaming.BuildStem(track)).IsEqualTo("Real Artist - Song");
@@ -73,7 +73,7 @@ public sealed class FileNamingTests
     [Test]
     public async Task BuildStem_falls_back_to_the_uploader_then_to_a_placeholder()
     {
-        var withUser = new Track { Id = 1, Title = "Song", User = new SoundCloudUser { Username = "dj" } };
+        var withUser = new Track { Id = 1, Title = "Song", User = new() { Username = "dj" } };
         var bare = new Track { Id = 42 };
 
         await Assert.That(FileNaming.BuildStem(withUser)).IsEqualTo("dj - Song");
@@ -93,7 +93,7 @@ public sealed class FileNamingTests
         {
             Id = 1,
             Title = "Người Phản Bội x Lá Xa Lìa Cành - NSon Mix.mp3",
-            User = new SoundCloudUser { Username = "NSon Remix" },
+            User = new() { Username = "NSon Remix" },
         };
 
         await Assert.That(FileNaming.BuildStem(track))
