@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -80,10 +80,25 @@ jobs:
       - name: Test
         run: dotnet test --solution scdl-4life.slnx -c Release --no-build
 
+  # The same matrix release.yml publishes from, so the Native AOT link for every
+  # runtime is exercised on every change rather than for the first time during a
+  # release. The name renders as "publish win-x64" for that entry, which is the
+  # required check on main and has to keep spelling itself the same way.
   publish:
-    name: publish win-x64
+    name: publish ${{ matrix.runtime }}
     needs: build
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            runtime: win-x64
+          - os: ubuntu-latest
+            runtime: linux-x64
+          - os: macos-latest
+            runtime: osx-arm64
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -102,15 +117,23 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '.config/dotnet-tools.json', 'global.json', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      # build.ps1 imports the MSVC environment itself, so Native AOT links here.
-      # It falls back to a trimmed self-contained binary if the toolchain is ever
+      # ILC links with clang on Linux. Windows gets its linker from the MSVC
+      # environment that build.ps1 imports itself, and macOS from the Xcode
+      # command line tools the runner already carries.
+      - name: Install the Native AOT prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      # Falls back to a trimmed self-contained binary if a toolchain is ever
       # missing, which is why the upload globs both output folders.
       - name: Publish
         shell: pwsh
-        run: ./build.ps1 Publish
+        run: ./build.ps1 Publish -Runtime ${{ matrix.runtime }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: scdl-win-x64
-          path: artifacts/*/scdl.exe
+          name: scdl-${{ matrix.runtime }}
+          path: |
+            artifacts/*/scdl
+            artifacts/*/scdl.exe
           if-no-files-found: error
