@@ -79,8 +79,7 @@ public sealed record Track
     /// uploaded in the title itself. <see cref="Title"/> keeps the raw value.
     /// </summary>
     [JsonIgnore]
-    public string DisplayTitle
-        => Title is { Length: > 0 } title ? AudioFileExtensions.StripFrom(title) : $"track-{Id}";
+    public string DisplayTitle => Title is { Length: > 0 } title ? AudioFileExtensions.StripFrom(title) : $"track-{Id}";
 
     [JsonIgnore]
     public TimeSpan Duration => TimeSpan.FromMilliseconds(DurationMs);

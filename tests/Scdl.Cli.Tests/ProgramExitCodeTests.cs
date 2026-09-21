@@ -21,7 +21,7 @@ public sealed class ProgramExitCodeTests
         command.SetAction((ParseResult _, CancellationToken _) => Task.FromException<int>(exception));
 
         var console = new TestConsole();
-        var exit = await Program.RunAsync(command.Parse([]), new ConsoleRenderer(console));
+        var exit = await Program.RunAsync(command.Parse([]), new(console));
 
         return (exit, console.Output);
     }
@@ -49,8 +49,7 @@ public sealed class ProgramExitCodeTests
     [Test]
     public async Task A_failure_prints_its_sentence_and_not_a_stack_trace()
     {
-        var (_, output) = await RunFailing(
-            new ScdlException("ffmpeg is not on PATH.", ScdlErrorCode.MuxerUnavailable));
+        var (_, output) = await RunFailing(new ScdlException("ffmpeg is not on PATH.", ScdlErrorCode.MuxerUnavailable));
 
         await Assert.That(output.Contains("ffmpeg is not on PATH.", StringComparison.Ordinal)).IsTrue();
         await Assert.That(output.Contains("ScdlException", StringComparison.Ordinal)).IsFalse();
@@ -90,7 +89,7 @@ public sealed class ProgramExitCodeTests
         command.SetAction((ParseResult _, CancellationToken _) => Task.FromResult(ScdlExitCode.Unavailable));
 
         var console = new TestConsole();
-        var exit = await Program.RunAsync(command.Parse([]), new ConsoleRenderer(console));
+        var exit = await Program.RunAsync(command.Parse([]), new(console));
 
         await Assert.That(exit).IsEqualTo(ScdlExitCode.Unavailable);
         await Assert.That(console.Output).IsEmpty();
@@ -109,6 +108,6 @@ public sealed class ProgramExitCodeTests
             => Task.FromException<int>(new InvalidOperationException("a real bug")));
 
         await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => await Program.RunAsync(command.Parse([]), new ConsoleRenderer(new TestConsole())));
+            => await Program.RunAsync(command.Parse([]), new(new TestConsole())));
     }
 }

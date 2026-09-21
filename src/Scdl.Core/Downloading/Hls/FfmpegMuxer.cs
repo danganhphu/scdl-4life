@@ -22,6 +22,12 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
         "-hide_banner",
         "-loglevel", "error",
         "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
+
+        // The machine readable progress stream, which is the only thing stdout
+        // carries. -nostats turns off the human one, which would otherwise mix
+        // into the stderr this reports verbatim when ffmpeg fails.
+        "-nostats",
+        "-progress", "pipe:1",
     ];
 
     /// <summary>faststart is an MP4 muxer option; other muxers reject it outright.</summary>
@@ -79,6 +85,7 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
     public async Task MuxAsync(Uri playlistUri,
                                string outputPath,
                                string containerExtension,
+                               IProgress<TransferProgress>? progress,
                                CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(playlistUri);
@@ -135,9 +142,9 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
         // Both pipes must be drained concurrently. Reading one to completion
         // while the other fills its buffer is a classic deadlock.
         var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var progressTask = FfmpegProgressReader.ReadAsync(process.StandardOutput, progress, cancellationToken);
 
-        await Task.WhenAll(stderrTask, stdoutTask).ConfigureAwait(false);
+        await Task.WhenAll(stderrTask, progressTask).ConfigureAwait(false);
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         if (process.ExitCode is not 0)

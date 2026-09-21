@@ -17,7 +17,7 @@ internal static class Program
     };
 
     private static Task<int> Main(string[] args)
-        => RunAsync(CommandFactory.CreateRoot().Parse(args), new ConsoleRenderer(AnsiConsole.Console));
+        => RunAsync(CommandFactory.CreateRoot().Parse(args), new(AnsiConsole.Console));
 
     /// <summary>
     /// Invokes a parsed command and turns whatever escapes it into an exit code.

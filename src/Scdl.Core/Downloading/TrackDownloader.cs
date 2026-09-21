@@ -265,7 +265,7 @@ internal sealed class TrackDownloader(HttpClient http,
                 // path: ffmpeg picks its muxer from the extension it is given,
                 // and ".part" is not one it knows.
                 await muxer
-                      .MuxAsync(playlistUri, partialPath, Path.GetExtension(destination), cancellationToken)
+                      .MuxAsync(playlistUri, partialPath, Path.GetExtension(destination), progress, cancellationToken)
                       .ConfigureAwait(false);
 
                 File.Move(partialPath, destination, overwrite: true);
