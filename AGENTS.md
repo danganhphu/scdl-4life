@@ -139,8 +139,12 @@ Nobody types `git tag`. Merging to `main` runs `release.yml`, whose first job ke
 with the next version and a changelog. Merging *that* pull request is the act of releasing: it tags, creates the GitHub
 release, and only then do the build jobs run and hang the archives on it.
 
-- **`version.txt`** is written by release-please and **nothing in the build reads it.** Editing it changes no binary.
-  It exists because release-please's `simple` strategy keeps one; treat it as the bot's bookkeeping.
+- The only files release-please edits are `.release-please-manifest.json` and `CHANGELOG.md`. It writes no version into
+  any project file, and `version.txt` never appears - the `simple` strategy updates one only where it already exists.
+  The tag remains the single place a version is declared.
+- **`initial-version` decides the first release, not `bump-minor-pre-major`.** A manifest of `0.0.0` reads as "nothing
+  released yet", and release-please's own default for that is `1.0.0`. This repo pins `0.1.0`, because 1.0.0 is a claim
+  about a stable surface and this one is not finished.
 - The three jobs share one workflow because a tag pushed by `GITHUB_TOKEN` deliberately does not start another workflow
   run. A separate tag-triggered workflow would never fire.
 - Windows gets a `.zip`, Unix a `.tar.gz`. Not a style choice: zip carries no permission bits, so a Linux user
