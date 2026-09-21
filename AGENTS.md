@@ -147,8 +147,25 @@ here, so every assistant reads one set of rules.
 | `analyzer-gates`      | an analyzer blocks the build                                                  |
 
 MCP servers are declared twice on purpose: `.mcp.json` for Claude Code and anything else reading the standard
-project-scoped format, `.vscode/mcp.json` for VS Code, which only reads its own. Both point at the same Microsoft Learn
-endpoint; keep them in step.
+project-scoped format, `.vscode/mcp.json` for VS Code, which only reads its own. Keep them in step.
+
+### Aspire guidance is installed, not committed
+
+```powershell
+aspire agent init --skills all --skill-locations claudecode
+```
+
+That writes Aspire's own skills into `.claude/skills/`, which is gitignored. They ship inside the Aspire CLI and are
+version-matched to it, so a vendored copy would be wrong for anyone on a different CLI version. Run the command after
+cloning, and again after `aspire update --self`.
+
+Two things the command does that are worth knowing:
+
+- It installs a **telemetry hook into the user-level `~/.claude/settings.json`**, not into this repo, so it applies to
+  every project on that machine. Remove the hook or set `ASPIRE_CLI_TELEMETRY_OPTOUT=true` if that is not wanted.
+- The Aspire MCP server is declared in `.mcp.json` as `aspire agent mcp`. It exposes the running AppHost's resources,
+  logs and traces, and it also serves the current aspire.dev documentation through `search_docs` and `get_doc` - which
+  is the right way to answer an Aspire question, rather than from memory.
 
 There is also a `claude-memory/` folder on the maintainer's machine, holding the long form of every decision. It is
 **not** in git and nothing here depends on it. Anything a contributor needs belongs in this file or in a skill; if a

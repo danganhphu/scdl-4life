@@ -3,6 +3,10 @@
     "microsoft-learn": {
       "type": "http",
       "url": "https://learn.microsoft.com/api/mcp"
+    },
+    "aspire": {
+      "command": "aspire",
+      "args": ["agent", "mcp"]
     }
   }
 }

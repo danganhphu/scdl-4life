@@ -366,3 +366,12 @@ claude-memory/
 ## this one holds whatever must not be, such as a GH_TOKEN for the account that
 ## owns this repo.
 .claude/settings.local.json
+
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+
+## Aspire's own agent skills, installed by `aspire agent init`. Not committed:
+## they ship with the Aspire CLI and are version-matched to whichever one you
+## have, so a vendored copy would drift the moment anybody updated. AGENTS.md
+## lists the command as a setup step.
+.claude/skills/
