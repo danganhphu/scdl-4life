@@ -80,10 +80,8 @@ jobs:
       - name: Test
         run: dotnet test --solution scdl-4life.slnx -c Release --no-build
 
-  # The same matrix release.yml publishes from, so the Native AOT link for every
-  # runtime is exercised on every change rather than for the first time during a
-  # release. The name renders as "publish win-x64" for that entry, which is the
-  # required check on main and has to keep spelling itself the same way.
+  # The matrix release.yml publishes from. "publish win-x64" is a required check
+  # on main, so the rendered name has to keep spelling itself that way.
   publish:
     name: publish ${{ matrix.runtime }}
     needs: build
@@ -99,6 +97,8 @@ jobs:
             runtime: linux-x64
           - os: macos-latest
             runtime: osx-arm64
+          - os: macos-latest
+            runtime: osx-x64
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,9 +117,6 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '.config/dotnet-tools.json', 'global.json', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      # ILC links with clang on Linux. Windows gets its linker from the MSVC
-      # environment that build.ps1 imports itself, and macOS from the Xcode
-      # command line tools the runner already carries.
       - name: Install the Native AOT prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev

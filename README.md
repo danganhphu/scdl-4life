@@ -78,15 +78,13 @@ Expand-Archive scdl-0.1.0-win-x64.zip -DestinationPath $env:LOCALAPPDATA\scdl
 tar -xzf scdl-0.1.0-linux-x64.tar.gz -C ~/.local/bin
 ```
 
-**macOS**, Apple Silicon. The second line clears the quarantine flag that macOS puts on anything a browser downloaded:
+**macOS**. Use `osx-arm64` on Apple Silicon and `osx-x64` on Intel. The second line clears the quarantine flag that
+macOS puts on anything a browser downloaded:
 
 ```bash
 tar -xzf scdl-0.1.0-osx-arm64.tar.gz -C /usr/local/bin
 xattr -d com.apple.quarantine /usr/local/bin/scdl
 ```
-
-Intel Macs have no prebuilt binary, because Native AOT cannot cross-compile between architectures. Build from source
-instead - see [Set up](#set-up).
 
 The binary is not code signed, so each platform asks once. Windows shows a SmartScreen warning: *More info*, then
 *Run anyway*.
