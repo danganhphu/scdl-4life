@@ -63,26 +63,43 @@ Two routes go above 128, and `scdl formats` tells you whether either is open bef
 
 ## Install
 
-No runtime needed - the binary is self-contained and does not require .NET installed. Take the archive for your
-platform from [Releases](https://github.com/danganhphu/scdl-4life/releases), then:
+No runtime needed - the binary is self-contained and does not require .NET installed.
 
 **Windows**
 
 ```powershell
-Expand-Archive scdl-0.1.0-win-x64.zip -DestinationPath $env:LOCALAPPDATA\scdl
+irm https://raw.githubusercontent.com/danganhphu/scdl-4life/main/install.ps1 | iex
 ```
 
-**Linux**
+**Linux and macOS**
 
 ```bash
-tar -xzf scdl-0.1.0-linux-x64.tar.gz -C ~/.local/bin
+curl -sSL https://raw.githubusercontent.com/danganhphu/scdl-4life/main/install.sh | sh
 ```
 
-**macOS**. Use `osx-arm64` on Apple Silicon and `osx-x64` on Intel. The second line clears the quarantine flag that
-macOS puts on anything a browser downloaded:
+Each script picks the build for your machine, checks it against the published `SHA256SUMS.txt` and refuses to unpack
+anything that does not match. Windows lands in `%LOCALAPPDATA%\Programs\scdl` and goes on your PATH; everywhere else it
+is `~/.local/bin`, and the script tells you if that is not already on PATH. Set `SCDL_INSTALL_DIR` to choose somewhere
+else and `SCDL_VERSION` to pin a release.
+
+### Or unpack it yourself
+
+Piping a script into a shell is a reasonable thing to refuse. Take the archive for your platform from
+[Releases](https://github.com/danganhphu/scdl-4life/releases) and:
+
+```powershell
+Expand-Archive scdl-0.2.0-win-x64.zip -DestinationPath $env:LOCALAPPDATA\Programs\scdl
+```
 
 ```bash
-tar -xzf scdl-0.1.0-osx-arm64.tar.gz -C /usr/local/bin
+tar -xzf scdl-0.2.0-linux-x64.tar.gz -C ~/.local/bin
+```
+
+On macOS take `osx-arm64` for Apple Silicon or `osx-x64` for Intel, and clear the flag macOS puts on anything a browser
+downloaded:
+
+```bash
+tar -xzf scdl-0.2.0-osx-arm64.tar.gz -C /usr/local/bin
 xattr -d com.apple.quarantine /usr/local/bin/scdl
 ```
 
@@ -95,13 +112,13 @@ Every release carries `SHA256SUMS.txt` and a build provenance attestation, so yo
 what this repository's workflow built.
 
 ```powershell
-(Get-FileHash .\scdl-0.1.0-win-x64.zip -Algorithm SHA256).Hash
-gh attestation verify .\scdl-0.1.0-win-x64.zip --repo danganhphu/scdl-4life
+(Get-FileHash .\scdl-0.2.0-win-x64.zip -Algorithm SHA256).Hash
+gh attestation verify .\scdl-0.2.0-win-x64.zip --repo danganhphu/scdl-4life
 ```
 
 ```bash
 sha256sum -c SHA256SUMS.txt
-gh attestation verify scdl-0.1.0-linux-x64.tar.gz --repo danganhphu/scdl-4life
+gh attestation verify scdl-0.2.0-linux-x64.tar.gz --repo danganhphu/scdl-4life
 ```
 
 macOS has no `sha256sum`; use `shasum -a 256 -c SHA256SUMS.txt` instead. Verify the archive rather than the executable
