@@ -22,7 +22,7 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
         console.MarkupLine($"{position}[bold]{Escape(track.DisplayArtist)}[/] - {Escape(track.DisplayTitle)}");
     }
 
-    public void LadderTable(Track track, IReadOnlyList<StreamOption> options, bool hasGoPlusToken)
+    public void LadderTable(Track track, IReadOnlyList<StreamOption> options, bool hasToken)
     {
         var table = new Table()
                     .Border(TableBorder.Rounded)
@@ -62,11 +62,18 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
 
         console.Write(table);
 
-        if (!hasGoPlusToken && !options.Any(option => option.Rung.Kbps >= TranscodingCatalog.LadderCeilingKbps))
+        const int ceiling = TranscodingCatalog.LadderCeilingKbps;
+
+        if (!options.Any(option => option.Rung.Kbps >= ceiling))
         {
+            // "did not unlock", not "you have no Go+": the token may be stale or
+            // the account may lack the subscription, and the two look identical
+            // from here.
             console.MarkupLine(
-                $"[yellow]![/] {TranscodingCatalog.LadderCeilingKbps} kbps AAC is Go+ only. " +
-                "Pass [bold]--oauth[/] to check whether it unlocks here.");
+                hasToken
+                    ? $"[yellow]![/] {ceiling} kbps AAC did not unlock with this token."
+                    : $"[yellow]![/] {ceiling} kbps AAC is Go+ only. " +
+                      "Pass [bold]--oauth[/] to check whether it unlocks here.");
         }
 
         console.MarkupLine(
