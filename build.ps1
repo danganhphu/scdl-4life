@@ -277,8 +277,9 @@ function Invoke-Publish
     dotnet @arguments
     Assert-ExitCode 'Publish'
 
-    # No extension on Linux and macOS, so both names are looked for.
-    $binary = Get-ChildItem -Path $output -Include 'scdl', 'scdl.exe' -Recurse -ErrorAction SilentlyContinue |
+    # Not recursive, or it finds the scdl inside scdl.dSYM first.
+    $binary = Get-ChildItem -Path $output -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -in 'scdl', 'scdl.exe' } |
         Select-Object -First 1
 
     if ($binary)
