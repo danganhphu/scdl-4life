@@ -6,11 +6,12 @@
     Downloads the release archive for this machine, checks it against the
     published SHA256SUMS.txt, unpacks it and puts it on PATH.
 
-    Deliberately written for Windows PowerShell 5.1, unlike every other script
-    here: whoever runs this has installed nothing yet, and a fresh Windows only
-    has 5.1. So no ternaries, no null-coalescing, and TLS 1.2 is forced on,
-    because 5.1 does not negotiate it by default and GitHub refuses anything
-    older.
+    Runs on Windows PowerShell 5.1 and on pwsh 7. 5.1 is the floor rather than
+    the target, and the only script here without #Requires -Version 7.0: whoever
+    runs this has installed nothing yet, and a fresh Windows only has 5.1.
+    Supporting that floor costs the ternary and null-coalescing operators, and
+    means forcing TLS 1.2 on, because 5.1 does not negotiate it by default and
+    GitHub refuses anything older.
 
 .PARAMETER Version
     Release to install, such as 0.2.0. Defaults to the latest.
