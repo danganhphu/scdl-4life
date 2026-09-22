@@ -87,16 +87,20 @@ else and `SCDL_VERSION` to pin a release.
 Piping a script into a shell is a reasonable thing to refuse. Take the archive for your platform from
 [Releases](https://github.com/danganhphu/scdl-4life/releases) and:
 
+**Windows**
+
 ```powershell
 Expand-Archive scdl-0.2.0-win-x64.zip -DestinationPath $env:LOCALAPPDATA\Programs\scdl
 ```
+
+**Linux**
 
 ```bash
 tar -xzf scdl-0.2.0-linux-x64.tar.gz -C ~/.local/bin
 ```
 
-On macOS take `osx-arm64` for Apple Silicon or `osx-x64` for Intel, and clear the flag macOS puts on anything a browser
-downloaded:
+**macOS**. Take `osx-arm64` for Apple Silicon or `osx-x64` for Intel. The second line clears the flag macOS puts on
+anything a browser downloaded:
 
 ```bash
 tar -xzf scdl-0.2.0-osx-arm64.tar.gz -C /usr/local/bin
@@ -109,12 +113,16 @@ The binary is not code signed, so each platform asks once. Windows shows a Smart
 ### Verifying a download
 
 Every release carries `SHA256SUMS.txt` and a build provenance attestation, so you can check that what you downloaded is
-what this repository's workflow built.
+what this repository's workflow built. The install scripts do the checksum half for you.
+
+**Windows**
 
 ```powershell
 (Get-FileHash .\scdl-0.2.0-win-x64.zip -Algorithm SHA256).Hash
 gh attestation verify .\scdl-0.2.0-win-x64.zip --repo danganhphu/scdl-4life
 ```
+
+**Linux and macOS**
 
 ```bash
 sha256sum -c SHA256SUMS.txt
@@ -126,11 +134,18 @@ inside it - only the archive's bytes were signed.
 
 ## Use
 
+Files land in the directory you are standing in unless `-o` says otherwise, so the usual shape is to change into the
+folder you want and give it a URL.
+
+**Windows**
+
 ```powershell
 scdl formats "https://soundcloud.com/<user>/<track>"
 scdl get "https://soundcloud.com/<user>/<track>" -o D:\Music
 scdl get "<url>" --oauth "<go-plus-token>" -o D:\Music
 ```
+
+**Linux and macOS**
 
 ```bash
 scdl formats "https://soundcloud.com/<user>/<track>"
@@ -217,11 +232,15 @@ It is undocumented and inconsistent, so a few things are worth knowing before re
 The .NET 10 SDK is the only hard requirement - `global.json` pins the version and selects the test runner, and
 everything else is restored from the repository.
 
+**Windows**
+
 ```powershell
 git clone https://github.com/danganhphu/scdl-4life.git
 cd scdl-4life
 ./build.ps1 All
 ```
+
+**Linux and macOS**
 
 ```bash
 git clone https://github.com/danganhphu/scdl-4life.git
