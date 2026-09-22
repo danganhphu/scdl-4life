@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/danganhphu/scdl-4life/compare/v0.1.0...v0.2.0) (2026-09-22)
+
+
+### Features
+
+* **release:** publish an osx-arm64 build ([8cb50a5](https://github.com/danganhphu/scdl-4life/commit/8cb50a5b2c3358edbbd1eb4b3460bb6b0db41deb))
+
+
+### Fixes
+
+* **release:** stage the binary, not the symbol table macOS hides beside it ([879cea1](https://github.com/danganhphu/scdl-4life/commit/879cea1d75d0c9cf26a36d2d3b4b60950648cb8a))
+
 ## 0.1.0 (2026-09-21)
 
 
