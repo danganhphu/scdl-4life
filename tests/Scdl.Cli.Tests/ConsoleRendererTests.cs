@@ -112,20 +112,42 @@ public sealed class ConsoleRendererTests
         var console = Console();
         var track = TrackWith("mp3_1_0", "opus_0_0");
 
-        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasGoPlusToken: false);
+        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasToken: false);
 
         await Assert.That(console.Output.Contains("--oauth", StringComparison.Ordinal)).IsTrue();
     }
 
+    /// <summary>
+    /// Observed against a live track on a free account: the hint vanished the
+    /// moment a token was passed, so the run that most needs an explanation got
+    /// none. Passing a token is not the same as the account having Go+.
+    /// </summary>
     [Test]
-    public async Task The_ladder_stays_quiet_when_the_ceiling_is_already_offered()
+    public async Task The_ladder_says_the_ceiling_did_not_unlock_when_a_token_was_passed()
+    {
+        var console = Console();
+        var track = TrackWith("mp3_1_0", "opus_0_0");
+
+        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasToken: true);
+
+        await Assert.That(console.Output.Contains("did not unlock", StringComparison.Ordinal)).IsTrue();
+
+        // Suggesting the flag to somebody who just used it is noise.
+        await Assert.That(console.Output.Contains("--oauth", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task The_ladder_stays_quiet_when_the_ceiling_is_already_offered(bool hasToken)
     {
         var console = Console();
         var track = TrackWith("aac_256k", "mp3_1_0");
 
-        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasGoPlusToken: false);
+        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasToken);
 
         await Assert.That(console.Output.Contains("--oauth", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(console.Output.Contains("did not unlock", StringComparison.Ordinal)).IsFalse();
     }
 
     /// <summary>The claim this whole tool exists to make. It belongs in the output, not just the README.</summary>
@@ -135,7 +157,7 @@ public sealed class ConsoleRendererTests
         var console = Console();
         var track = TrackWith("mp3_1_0");
 
-        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasGoPlusToken: true);
+        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasToken: true);
 
         await Assert.That(console.Output.Contains("no 320 kbps rung", StringComparison.Ordinal)).IsTrue();
     }
