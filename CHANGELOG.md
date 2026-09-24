@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/danganhphu/scdl-4life/compare/v0.2.0...v0.3.0) (2026-09-24)
+
+
+### Features
+
+* **install:** one line install for all three platforms ([67c30c4](https://github.com/danganhphu/scdl-4life/commit/67c30c4324426bf6c1e907b458e2cf7d10ea05ea))
+
+
+### Fixes
+
+* **cli:** say when a token was passed and the ceiling still did not unlock ([cbc226f](https://github.com/danganhphu/scdl-4life/commit/cbc226f99af159184f71f703724230f119704a01))
+
 ## [0.2.0](https://github.com/danganhphu/scdl-4life/compare/v0.1.0...v0.2.0) (2026-09-22)
 
 
