@@ -44,7 +44,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Docs">
-    <PackageVersion Include="MarkdownSnippets.MsBuild" Version="28.4.2" />
+    <PackageVersion Include="MarkdownSnippets.MsBuild" Version="28.5.0" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">
