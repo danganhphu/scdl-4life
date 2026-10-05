@@ -32,8 +32,8 @@
        and runtime assets, which is exactly what an analyzer wants, so none of
        that has to be spelled out per reference. -->
   <ItemGroup Label="Analyzers">
-    <GlobalPackageReference Include="Roslynator.Analyzers" Version="5.0.0" />
-    <GlobalPackageReference Include="Roslynator.Formatting.Analyzers" Version="5.0.0" />
+    <GlobalPackageReference Include="Roslynator.Analyzers" Version="5.0.1" />
+    <GlobalPackageReference Include="Roslynator.Formatting.Analyzers" Version="5.0.1" />
   </ItemGroup>
 
   <!-- Derives the version from the nearest git tag, so there is exactly one
