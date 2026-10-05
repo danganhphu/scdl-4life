@@ -24,7 +24,7 @@
   <ItemGroup Label="Media">
     <!-- ATL is pure managed and parses containers by hand, so it survives
          trimming far better than a reflection driven tagger. -->
-    <PackageVersion Include="z440.atl.core" Version="7.17.0" />
+    <PackageVersion Include="z440.atl.core" Version="7.18.0" />
   </ItemGroup>
 
   <!-- GlobalPackageReference applies to every project in the repo without any
