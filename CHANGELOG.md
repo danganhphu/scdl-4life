@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1](https://github.com/danganhphu/scdl-4life/compare/v0.3.0...v0.3.1) (2026-10-08)
+
+
+### Fixes
+
+* **cli:** tell a timeout apart from a cancellation ([cb39f2e](https://github.com/danganhphu/scdl-4life/commit/cb39f2e248da281cdf8c8debb2ec646045ad1a6b))
+* **naming:** name files after the title alone ([5f94e9e](https://github.com/danganhphu/scdl-4life/commit/5f94e9e27cc732ce5cb7a561ac94cbe49b12a735))
+* **tagging:** stop writing the SoundCloud link into the comment tag ([44b2017](https://github.com/danganhphu/scdl-4life/commit/44b2017cce11c649490f9c96cdc54d45f266f9ba))
+
+
+### Performance
+
+* **download:** pool the copy buffer and unbuffer the sink ([e25679d](https://github.com/danganhphu/scdl-4life/commit/e25679d37ec9f57973bb613fa5a263ee70c740f7))
+
 ## [0.3.0](https://github.com/danganhphu/scdl-4life/compare/v0.2.0...v0.3.0) (2026-09-24)
 
 
