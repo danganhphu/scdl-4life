@@ -41,3 +41,15 @@ using System.Diagnostics.CodeAnalysis;
         "blocks.",
     Scope = "type",
     Target = "~T:Scdl.Core.SoundCloud.TrackStreams")]
+
+[assembly: SuppressMessage(
+    "Design",
+    "CA1031:Do not catch general exception types",
+    Justification =
+        "Cover art is fetched after the audio is already on disk, so anything thrown here throws away a " +
+        "download that succeeded. There is no list of types that covers it either: this client carries the " +
+        "standard resilience handler, and its total timeout surfaces as Polly's TimeoutRejectedException, " +
+        "which derives straight from Exception. The filter still lets a real Ctrl+C through.",
+    Scope = "member",
+    Target =
+        "~M:Scdl.Core.Tagging.AtlMediaTagger.TryFetchArtworkAsync(Scdl.Core.SoundCloud.Models.Track,System.Threading.CancellationToken)~System.Threading.Tasks.Task{System.Byte[]}")]

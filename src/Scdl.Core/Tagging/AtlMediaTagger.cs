@@ -26,12 +26,11 @@ internal sealed class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagger> lo
 
         try
         {
+            // No comment tag. The permalink used to go there, which put a
+            // soundcloud.com link in every file the user then shared.
             var tagged = new AtlTrack(filePath)
             {
-                Title = track.DisplayTitle,
-                Artist = track.DisplayArtist,
-                AlbumArtist = track.DisplayArtist,
-                Comment = track.PermalinkUrl ?? string.Empty,
+                Title = track.DisplayTitle, Artist = track.DisplayArtist, AlbumArtist = track.DisplayArtist,
             };
 
             // A set is the only thing here that genuinely is an album, and the
@@ -92,9 +91,19 @@ internal sealed class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagger> lo
         {
             return await http.GetByteArrayAsync(artworkUri, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException e)
+
+        // Missing cover art is cosmetic; never fail a download over it. The file
+        // is already on disk by now, so anything thrown here loses a completed
+        // download over a missing thumbnail.
+        //
+        // Deliberately not a list of types. This client carries the standard
+        // resilience handler, whose total timeout surfaces as Polly's
+        // TimeoutRejectedException - neither an HttpRequestException nor a
+        // TimeoutException, so no narrow catch sees it. HttpClient.Timeout
+        // raises a TaskCanceledException, which is indistinguishable from Ctrl+C
+        // except by the token, hence the filter.
+        catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            // Missing cover art is cosmetic; never fail a download over it.
             LogArtworkFailed(logger, e.Message);
 
             return null;
