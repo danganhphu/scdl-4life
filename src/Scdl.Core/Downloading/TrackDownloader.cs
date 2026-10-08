@@ -1,3 +1,4 @@
+using System.Buffers;
 using Scdl.Core.Audio;
 using Scdl.Core.Downloading.Hls;
 using Scdl.Core.Results;
@@ -403,35 +404,57 @@ internal sealed class TrackDownloader(HttpClient http,
 
         await using var sink = CreateSink(partialPath);
 
-        var buffer = new byte[CopyBufferSize];
+        // Pooled rather than allocated: CopyBufferSize is over the 85,000 byte
+        // threshold, so a plain new byte[] lands on the large object heap once
+        // per track and is only reclaimed by a gen2 collection. Rent and Return
+        // sit in the same method and the buffer never escapes it, which is what
+        // keeps the pool safe to use here.
+        var buffer = ArrayPool<byte>.Shared.Rent(CopyBufferSize);
         long written = 0;
 
-        while (true)
+        try
         {
-            var read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-
-            if (read is 0)
+            while (true)
             {
-                break;
+                var read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+
+                if (read is 0)
+                {
+                    break;
+                }
+
+                await sink.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+
+                written += read;
+                progress?.Report(TransferProgress.FromBytes(written, total));
             }
-
-            await sink.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
-
-            written += read;
-            progress?.Report(TransferProgress.FromBytes(written, total));
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
 
         return written;
     }
 
+    /// <summary>
+    /// Unbuffered on purpose. Every write through this sink is already a whole
+    /// copy buffer or a whole HLS segment, so a FileStream buffer would only
+    /// memcpy each one before passing it on - and at the old size it was a
+    /// second large object heap allocation per download. BufferSize 0 needs the
+    /// FileStreamOptions overload; the int one rejects anything below 1.
+    /// </summary>
     private static FileStream CreateSink(string path)
         => new(
             path,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            CopyBufferSize,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
+            new FileStreamOptions
+            {
+                Mode = FileMode.Create,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+                BufferSize = 0,
+            });
 
     private static string ResolveDestination(DownloadRequest request, string stem, string extension)
     {
