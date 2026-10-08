@@ -91,14 +91,14 @@ internal sealed class SoundCloudClient(HttpClient http,
 
         var clientId = await clientIds.GetAsync(cancellationToken).ConfigureAwait(false);
         var separator = transcoding.Url.Contains('?', StringComparison.Ordinal) ? '&' : '?';
-        var builder = $"{transcoding.Url}{separator}client_id={clientId}";
+        var streamRequest = $"{transcoding.Url}{separator}client_id={clientId}";
 
         if (track.TrackAuthorization is { Length: > 0 } authorization)
         {
-            builder += $"&track_authorization={Uri.EscapeDataString(authorization)}";
+            streamRequest += $"&track_authorization={Uri.EscapeDataString(authorization)}";
         }
 
-        using var response = await SendAsync(new(builder), cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(new(streamRequest), cancellationToken).ConfigureAwait(false);
 
         // An advertised rung that answers 404 or 403 is routine, not a fault, so
         // it comes back as a failed Result rather than an exception.

@@ -2,7 +2,7 @@ using Scdl.Core.Audio;
 
 namespace Scdl.Core.Tests;
 
-public sealed class TranscodingCatalogTests
+internal sealed class TranscodingCatalogTests
 {
     [Test]
     [Arguments("aac_256k", 256, AudioCodec.Aac)]

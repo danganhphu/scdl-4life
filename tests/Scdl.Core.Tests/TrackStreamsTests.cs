@@ -4,7 +4,7 @@ using Scdl.Core.SoundCloud.Models;
 
 namespace Scdl.Core.Tests;
 
-public sealed class TrackStreamsTests
+internal sealed class TrackStreamsTests
 {
     private static Transcoding Rung(string preset, string protocol = "hls", bool snipped = false)
         => new()

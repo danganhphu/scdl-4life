@@ -9,7 +9,7 @@ namespace Scdl.Cli.Tests;
 /// that can be exercised without touching the network, and it is also the part
 /// that has already been wrong once.
 /// </summary>
-public sealed class UrlArgumentTests
+internal sealed class UrlArgumentTests
 {
     private static ParseResult Parse(params string[] args)
         => CommandFactory.CreateRoot().Parse(args);

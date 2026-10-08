@@ -7,7 +7,7 @@ namespace Scdl.Core.Tests;
 /// have to remember. Reflection is fine here: the test host is the one project
 /// that is deliberately not AOT.
 /// </summary>
-public sealed class ArchitectureTests
+internal sealed class ArchitectureTests
 {
     private static readonly Assembly CoreAssembly = typeof(ICoreAssemblyMarker).Assembly;
 

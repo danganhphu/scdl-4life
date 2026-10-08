@@ -2,7 +2,7 @@ using Scdl.Core.Audio;
 
 namespace Scdl.Core.Tests;
 
-public sealed class AudioFileExtensionsTests
+internal sealed class AudioFileExtensionsTests
 {
     [Test]
     [Arguments("Some Mix.mp3", "Some Mix")]

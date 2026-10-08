@@ -10,7 +10,7 @@ namespace Scdl.Core.Tests;
 /// nothing, which is the exact failure this repo has already hit once with
 /// doc-comment analyzers.
 /// </summary>
-public sealed class SoundCloudOptionsValidationTests
+internal sealed class SoundCloudOptionsValidationTests
 {
     private static SoundCloudOptions Resolve(Action<SoundCloudOptions> configure)
     {
