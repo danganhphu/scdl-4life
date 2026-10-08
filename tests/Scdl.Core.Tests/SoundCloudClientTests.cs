@@ -10,7 +10,7 @@ using Scdl.Core.Tests.Fakes;
 
 namespace Scdl.Core.Tests;
 
-public sealed class SoundCloudClientTests
+internal sealed class SoundCloudClientTests
 {
     private const string ClientId = "test-client-id-0000000000000000";
 

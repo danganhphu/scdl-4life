@@ -2,7 +2,7 @@ using Scdl.Core.Downloading.Hls;
 
 namespace Scdl.Core.Tests;
 
-public sealed class HlsPlaylistTests
+internal sealed class HlsPlaylistTests
 {
     private static readonly Uri PlaylistUri =
         new("https://cf-hls-media.sndcdn.com/playlist/abc/stream/playlist.m3u8?token=xyz");

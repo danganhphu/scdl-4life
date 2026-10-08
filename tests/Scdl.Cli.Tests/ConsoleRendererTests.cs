@@ -12,7 +12,7 @@ namespace Scdl.Cli.Tests;
 /// rather than on calls made to a mock console. A renderer that writes the wrong
 /// thing is the only way this class can be wrong.
 /// </summary>
-public sealed class ConsoleRendererTests
+internal sealed class ConsoleRendererTests
 {
     /// <summary>Wide enough that a table never wraps and breaks an assertion on its content.</summary>
     private const int ConsoleWidth = 200;

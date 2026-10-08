@@ -2,7 +2,7 @@ using Scdl.Core.Results;
 
 namespace Scdl.Core.Tests;
 
-public sealed class ScdlExitCodeTests
+internal sealed class ScdlExitCodeTests
 {
     [Test]
     [Arguments(ScdlErrorCode.UnsupportedResource, ScdlExitCode.Usage)]

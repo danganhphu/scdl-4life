@@ -7,7 +7,7 @@ namespace Scdl.Cli.Tests;
 /// they are allowed to appear. Parsing never invokes an action, so none of this
 /// touches the network.
 /// </summary>
-public sealed class CommandParsingTests
+internal sealed class CommandParsingTests
 {
     private const string TrackUrl = "https://soundcloud.com/artist/track";
 

@@ -12,7 +12,7 @@ namespace Scdl.Cli.Tests;
 /// tool's machine-readable output, so a script can tell "install ffmpeg" from
 /// "that track is gone" without parsing English.
 /// </summary>
-public sealed class ProgramExitCodeTests
+internal sealed class ProgramExitCodeTests
 {
     /// <summary>Invokes a command whose action does nothing but fail the way a real one might.</summary>
     private static async Task<(int Exit, string Output)> RunFailing(Exception exception)

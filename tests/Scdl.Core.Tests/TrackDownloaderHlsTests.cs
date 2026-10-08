@@ -18,7 +18,7 @@ namespace Scdl.Core.Tests;
 /// a rung the CDN will not serve, and fragmented MP4 with no muxer installed.
 /// Both must step down the ladder; everything else must stop.
 /// </summary>
-public sealed class TrackDownloaderHlsTests
+internal sealed class TrackDownloaderHlsTests
 {
     private const string PlaylistHost = "https://cf-hls-media.sndcdn.com/playlist";
 
