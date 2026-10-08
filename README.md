@@ -159,7 +159,7 @@ scdl get "<url>" --oauth "<go-plus-token>" -o ~/Music
 Example Artist - Example Track
   No original master offered; took the best transcoding instead.
   source  aac_160k (160 kbps AAC)
-  saved   D:\Music\Example Artist - Example Track.m4a (7.7 MiB)
+  saved   D:\Music\Example Track.m4a (7.7 MiB)
 ```
 
 `get` takes a set or playlist URL too. One dead track does not abandon the rest, and each track is tagged with the set

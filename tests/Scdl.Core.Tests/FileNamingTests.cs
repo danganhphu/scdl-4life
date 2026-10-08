@@ -4,7 +4,7 @@ using Scdl.Core.SoundCloud.Models;
 
 namespace Scdl.Core.Tests;
 
-public sealed class FileNamingTests
+internal sealed class FileNamingTests
 {
     [Test]
     [Arguments("Artist / Title", "Artist Title")]
@@ -34,6 +34,41 @@ public sealed class FileNamingTests
     }
 
     /// <summary>
+    /// An emoji is a surrogate pair, and slicing by index can land between the
+    /// two halves. The lone surrogate left behind still reaches disk - NTFS
+    /// stores code units without validating them - and then breaks anything
+    /// that re-encodes the name as UTF-8.
+    /// </summary>
+    [Test]
+    public async Task Sanitize_never_cuts_a_surrogate_pair_in_half()
+    {
+        // Placed so the second half of the pair is the character after the cap.
+        var raw = new string('x', 149) + "\U0001F525tail";
+
+        var sanitized = FileNaming.Sanitize(raw);
+
+        await Assert.That(sanitized.Length).IsLessThanOrEqualTo(150);
+        await Assert.That(sanitized.Any(char.IsSurrogate)).IsFalse();
+    }
+
+    /// <summary>
+    /// Vietnamese titles arrive decomposed often enough to matter: the tone mark
+    /// is its own code point after the vowel. Cutting between them drops the
+    /// mark and silently changes the word.
+    /// </summary>
+    [Test]
+    public async Task Sanitize_never_orphans_a_combining_mark()
+    {
+        // "a" + COMBINING DOT BELOW, the decomposed form of the vowel in "nhạc".
+        var raw = new string('x', 149) + "ạtail";
+
+        var sanitized = FileNaming.Sanitize(raw);
+
+        await Assert.That(sanitized.Length).IsLessThanOrEqualTo(150);
+        await Assert.That(sanitized.EndsWith('x')).IsTrue();
+    }
+
+    /// <summary>
     /// Bogus supplies the adversarial input here: real track titles are full of
     /// punctuation, and the only property that must hold for all of them is that
     /// the result is a legal, non-empty path component.
@@ -56,28 +91,30 @@ public sealed class FileNamingTests
         }
     }
 
+    /// <summary>
+    /// The uploader is deliberately absent. It is in the tags, and prefixing it
+    /// here only repeated a name the title already carries.
+    /// </summary>
     [Test]
-    public async Task BuildStem_prefers_publisher_metadata_over_the_uploader_name()
+    public async Task BuildStem_is_the_title_alone()
     {
         var track = new Track
         {
             Id = 1,
             Title = "Song",
             User = new() { Username = "uploader-account" },
-            PublisherMetadata = new() { Artist = "Real Artist" },
+            PublisherMetadata = new() { Artist = "Some Artist" },
         };
 
-        await Assert.That(FileNaming.BuildStem(track)).IsEqualTo("Real Artist - Song");
+        await Assert.That(FileNaming.BuildStem(track)).IsEqualTo("Song");
     }
 
     [Test]
-    public async Task BuildStem_falls_back_to_the_uploader_then_to_a_placeholder()
+    public async Task BuildStem_falls_back_to_the_track_id_when_there_is_no_title()
     {
-        var withUser = new Track { Id = 1, Title = "Song", User = new() { Username = "dj" } };
         var bare = new Track { Id = 42 };
 
-        await Assert.That(FileNaming.BuildStem(withUser)).IsEqualTo("dj - Song");
-        await Assert.That(FileNaming.BuildStem(bare)).IsEqualTo("Unknown Artist - track-42");
+        await Assert.That(FileNaming.BuildStem(bare)).IsEqualTo("track-42");
     }
 
     /// <summary>
@@ -92,12 +129,11 @@ public sealed class FileNamingTests
         var track = new Track
         {
             Id = 1,
-            Title = "Người Phản Bội x Lá Xa Lìa Cành - NSon Mix.mp3",
-            User = new() { Username = "NSon Remix" },
+            Title = "Chiều Mưa Phố Cũ x Lối Nhỏ Vào Đời - Hạ Vũ Mix.mp3",
+            User = new() { Username = "Hạ Vũ Remix" },
         };
 
-        await Assert.That(FileNaming.BuildStem(track))
-                    .IsEqualTo("NSon Remix - Người Phản Bội x Lá Xa Lìa Cành - NSon Mix");
+        await Assert.That(FileNaming.BuildStem(track)).IsEqualTo("Chiều Mưa Phố Cũ x Lối Nhỏ Vào Đời - Hạ Vũ Mix");
     }
 
     [Test]

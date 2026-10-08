@@ -1,11 +1,12 @@
 using System.Buffers;
+using System.Globalization;
 using System.Text;
 using Scdl.Core.Audio;
 using Scdl.Core.SoundCloud.Models;
 
 namespace Scdl.Core.Downloading;
 
-public static class FileNaming
+internal static class FileNaming
 {
     /// <summary>
     /// Windows caps a path component at 255 characters, and taggers get unhappy
@@ -48,27 +49,69 @@ public static class FileNaming
             builder.Append(replaced);
         }
 
-        var cleaned = builder.ToString().Trim().TrimEnd('.');
-
-        if (cleaned.Length > MaxStemLength)
-        {
-            cleaned = cleaned[..MaxStemLength].TrimEnd();
-        }
+        var cleaned = Truncate(builder.ToString().Trim().TrimEnd('.')).TrimEnd();
 
         return cleaned.Length is 0 ? "untitled" : cleaned;
     }
 
     /// <summary>
-    /// Builds the file name stem, always <c>{artist} - {title}</c>. Sorting a
-    /// folder by name then groups by artist, and the file still says what it is
-    /// when its tags are stripped.
+    /// Trims to <see cref="MaxStemLength"/> on a grapheme boundary.
     /// </summary>
+    /// <remarks>
+    /// Slicing by index splits the thing it lands in the middle of. An emoji in
+    /// a track title is a surrogate pair, and half of one is not a character:
+    /// the name still reaches disk, because NTFS stores code units without
+    /// validating them, and then breaks everything that round-trips it through
+    /// UTF-8. Vietnamese fails the same way when the title arrives decomposed,
+    /// losing the tone mark off the letter the cut landed on.
+    /// <para>
+    /// Counting runes is not enough either - a base character and its combining
+    /// marks are several runes and one grapheme - so this walks text elements,
+    /// which is what the Unicode segmentation rules call a character.
+    /// </para>
+    /// </remarks>
+    private static string Truncate(string value)
+    {
+        if (value.Length <= MaxStemLength)
+        {
+            return value;
+        }
+
+        var enumerator = StringInfo.GetTextElementEnumerator(value);
+        var boundary = 0;
+
+        while (enumerator.MoveNext())
+        {
+            var end = enumerator.ElementIndex + enumerator.GetTextElement().Length;
+
+            if (end > MaxStemLength)
+            {
+                break;
+            }
+
+            boundary = end;
+        }
+
+        return value[..boundary];
+    }
+
+    /// <summary>
+    /// Builds the file name stem: the title, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// The uploader's name used to be prefixed, on the theory that it groups a
+    /// folder by artist when sorted. It does not earn that here. These are DJ
+    /// mixes, and the uploader has almost always signed the title already, so
+    /// the prefix produced "NSon Remix - Something - Nson Mix" - the same name
+    /// twice. The artist is still written to the tags, which is where a player
+    /// reads it from anyway.
+    /// </remarks>
     public static string BuildStem(Track track)
     {
         ArgumentNullException.ThrowIfNull(track);
 
         // DisplayTitle has already dropped any trailing audio extension.
-        return Sanitize($"{track.DisplayArtist} - {track.DisplayTitle}");
+        return Sanitize(track.DisplayTitle);
     }
 
     /// <summary>
