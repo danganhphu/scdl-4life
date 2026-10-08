@@ -45,6 +45,17 @@ internal static class Program
             // the English.
             return ScdlExitCode.For(e.Code);
         }
+
+        // A timeout arrives as a TaskCanceledException too, and the inner
+        // exception is the only thing telling the two apart. Reporting a dead
+        // connection as "Cancelled." sends the user looking for a key they
+        // never pressed, and hands a script exit code 130 for a network fault.
+        catch (TaskCanceledException e) when (e.InnerException is TimeoutException)
+        {
+            renderer.Error("Timed out waiting for SoundCloud.");
+
+            return ScdlExitCode.Failure;
+        }
         catch (OperationCanceledException)
         {
             renderer.Warning("Cancelled.");
