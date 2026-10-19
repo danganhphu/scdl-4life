@@ -17,7 +17,7 @@
     <!-- System.CommandLine rather than Spectre.Console.Cli: the latter is
          explicitly documented as neither trimmable nor AOT appropriate.
          Spectre.Console itself is used for rendering only. -->
-    <PackageVersion Include="System.CommandLine" Version="2.0.12" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.13" />
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
   </ItemGroup>
 
