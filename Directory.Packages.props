@@ -48,7 +48,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Testing">
-    <PackageVersion Include="TUnit" Version="1.74.0" />
+    <PackageVersion Include="TUnit" Version="1.75.0" />
     <PackageVersion Include="Moq" Version="4.21.0" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
 
