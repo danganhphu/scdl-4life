@@ -77,6 +77,29 @@ internal sealed class CommandParsingTests
         await Assert.That(result.Errors.Count).IsEqualTo(0);
     }
 
+    /// <summary>
+    /// The default is title-only, so both of these are opt-outs in opposite
+    /// directions. Giving both is contradictory rather than invalid, and
+    /// <c>--no-tags</c> wins; parsing only has to accept the combination.
+    /// </summary>
+    [Test]
+    [Arguments("--no-tags")]
+    [Arguments("--full-tags")]
+    public async Task A_tag_option_parses(string option)
+    {
+        var result = Parse("get", TrackUrl, option);
+
+        await Assert.That(result.Errors.Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task The_two_tag_options_may_be_given_together()
+    {
+        var result = Parse("get", TrackUrl, "--no-tags", "--full-tags");
+
+        await Assert.That(result.Errors.Count).IsEqualTo(0);
+    }
+
     [Test]
     public async Task An_unknown_option_is_an_error_rather_than_being_ignored()
     {
@@ -93,6 +116,7 @@ internal sealed class CommandParsingTests
     [Arguments("--out")]
     [Arguments("--overwrite")]
     [Arguments("--no-tags")]
+    [Arguments("--full-tags")]
     public async Task Formats_does_not_take_the_download_options(string option)
     {
         var result = Parse("formats", TrackUrl, option, "value");

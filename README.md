@@ -162,9 +162,12 @@ Example Artist - Example Track
   saved   D:\Music\Example Track.m4a (7.7 MiB)
 ```
 
-`get` takes a set or playlist URL too. One dead track does not abandon the rest, and each track is tagged with the set
-as its album and with its position in the running order, so a player keeps the uploader's order instead of going
-alphabetical.
+`get` takes a set or playlist URL too. One dead track does not abandon the rest.
+
+A downloaded file carries its title and nothing else. No artist, no album, no genre, no year, no cover art, and any
+tag the uploader shipped is cleared rather than left in place. These files get shared, and everything in them travels
+along. `--full-tags` puts it all back, including the set as the album and the position in the running order, so a
+player keeps the uploader's order instead of going alphabetical.
 
 | Option                      | Meaning                                                                         |
 |-----------------------------|---------------------------------------------------------------------------------|
@@ -172,7 +175,8 @@ alphabetical.
 | `-f`, `--format <preset>`   | Force a preset instead of the top rung. Never silently downgraded.              |
 | `--prefer original\|stream` | `original` (default) takes the uploader's master when offered.                  |
 | `--oauth <token>`           | Go+ token, from the `Authorization` header of any `api-v2` request in devtools. |
-| `--no-tags`                 | Skip metadata and cover art.                                                    |
+| `--no-tags`                 | Write nothing at all, not even the title.                                       |
+| `--full-tags`               | Also write artist, album, genre, year and cover art.                            |
 | `--overwrite`               | Replace an existing file instead of appending a counter.                        |
 | `-v`, `--verbose`           | Log what the client is doing to stderr.                                         |
 

@@ -34,6 +34,19 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
     private static readonly string[] Mp4Arguments = ["-movflags", "+faststart"];
 
     /// <summary>
+    /// Output side options, so they have to follow <c>-i</c> rather than join
+    /// <see cref="BaseArguments"/>.
+    /// </summary>
+    /// <remarks>
+    /// Without these, a file scdl was asked to leave untagged still arrives
+    /// carrying something: ffmpeg copies the playlist's metadata across by
+    /// default, and stamps its own <c>encoder=Lavf...</c> on top.
+    /// <c>-map_metadata -1</c> drops the former, <c>+bitexact</c> the latter.
+    /// Neither re-encodes, so the audio stays byte identical either way.
+    /// </remarks>
+    private static readonly string[] MetadataArguments = ["-map_metadata", "-1", "-fflags", "+bitexact"];
+
+    /// <summary>
     /// ffmpeg's name for the muxer behind each container this tool writes.
     /// </summary>
     /// <remarks>
@@ -113,6 +126,11 @@ internal sealed class FfmpegMuxer(ILogger<FfmpegMuxer> logger) : IMediaMuxer
         startInfo.ArgumentList.Add(playlistUri.AbsoluteUri);
         startInfo.ArgumentList.Add("-c");
         startInfo.ArgumentList.Add("copy");
+
+        foreach (var argument in MetadataArguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
 
         // Both of these key off the container the caller asked for, never off
         // the output path. The path is a .part file, and an extension ffmpeg

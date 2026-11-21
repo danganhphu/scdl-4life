@@ -17,9 +17,11 @@ public interface IMediaTagger
     /// A single track genuinely has no album and no track number, so nothing is
     /// written for one rather than something invented.
     /// </param>
+    /// <param name="scope">How much of the track's metadata to write.</param>
     /// <param name="cancellationToken">Cancels the artwork fetch.</param>
     Task<bool> TryTagAsync(string filePath,
                            Track track,
                            SetPosition? setPosition,
+                           TagScope scope,
                            CancellationToken cancellationToken);
 }

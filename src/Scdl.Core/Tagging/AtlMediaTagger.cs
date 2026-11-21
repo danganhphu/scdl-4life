@@ -15,52 +15,76 @@ internal sealed class AtlMediaTagger(HttpClient http, ILogger<AtlMediaTagger> lo
     public async Task<bool> TryTagAsync(string filePath,
                                         ScTrack track,
                                         SetPosition? setPosition,
+                                        TagScope scope,
                                         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(track);
 
+        if (scope is TagScope.None)
+        {
+            return true;
+        }
+
+        // Only fetched for a full pass. A title-only file has nowhere to put a
+        // picture, so the request is never made rather than made and discarded.
         // Artwork is fetched before the file is opened so the handle is held for
         // the shortest possible window.
-        var artwork = await TryFetchArtworkAsync(track, cancellationToken).ConfigureAwait(false);
+        var artwork = scope is TagScope.Full
+                          ? await TryFetchArtworkAsync(track, cancellationToken).ConfigureAwait(false)
+                          : null;
 
         try
         {
-            // No comment tag. The permalink used to go there, which put a
-            // soundcloud.com link in every file the user then shared.
-            var tagged = new AtlTrack(filePath)
+            if (scope is TagScope.TitleOnly)
             {
-                Title = track.DisplayTitle, Artist = track.DisplayArtist, AlbumArtist = track.DisplayArtist,
-            };
-
-            // A set is the only thing here that genuinely is an album, and the
-            // only thing with a running order. For a single track both stay
-            // unwritten rather than invented, unless SoundCloud itself named an
-            // album in the publisher metadata.
-            if (setPosition is { } position)
-            {
-                tagged.Album = position.Album;
-                tagged.TrackNumber = position.Number;
-                tagged.TrackTotal = position.Total;
-            }
-            else if (track.PublisherMetadata?.AlbumTitle is { Length: > 0 } album)
-            {
-                tagged.Album = album;
+                // ATL reads the file's existing tags into the object it returns,
+                // and Save writes that whole picture back. Leaving a field unset
+                // therefore keeps it rather than clearing it, so anything the
+                // uploader shipped would survive untouched. Remove defaults to
+                // TagType.ANY and wipes the lot, which is what makes the next
+                // Save mean "the title and nothing else".
+                new AtlTrack(filePath).Remove();
             }
 
-            if (track.Genre is { Length: > 0 } genre)
-            {
-                tagged.Genre = genre;
-            }
+            // No comment tag in either scope. The permalink used to go there,
+            // which put a soundcloud.com link in every file the user shared.
+            var tagged = new AtlTrack(filePath) { Title = track.DisplayTitle, };
 
-            if (track.ReleaseYear > 0)
+            if (scope is TagScope.Full)
             {
-                tagged.Year = track.ReleaseYear;
-            }
+                tagged.Artist = track.DisplayArtist;
+                tagged.AlbumArtist = track.DisplayArtist;
 
-            if (artwork is not null)
-            {
-                tagged.EmbeddedPictures.Add(PictureInfo.fromBinaryData(artwork, PictureInfo.PIC_TYPE.Front));
+                // A set is the only thing here that genuinely is an album, and
+                // the only thing with a running order. For a single track both
+                // stay unwritten rather than invented, unless SoundCloud itself
+                // named an album in the publisher metadata.
+                if (setPosition is { } position)
+                {
+                    tagged.Album = position.Album;
+                    tagged.TrackNumber = position.Number;
+                    tagged.TrackTotal = position.Total;
+                }
+                else if (track.PublisherMetadata?.AlbumTitle is { Length: > 0 } album)
+                {
+                    tagged.Album = album;
+                }
+
+                if (track.Genre is { Length: > 0 } genre)
+                {
+                    tagged.Genre = genre;
+                }
+
+                if (track.ReleaseYear > 0)
+                {
+                    tagged.Year = track.ReleaseYear;
+                }
+
+                if (artwork is not null)
+                {
+                    tagged.EmbeddedPictures.Add(PictureInfo.fromBinaryData(artwork, PictureInfo.PIC_TYPE.Front));
+                }
             }
 
             var saved = tagged.Save();
