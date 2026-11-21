@@ -91,7 +91,15 @@ internal static class CommandFactory
             Description = "Replace an existing file instead of appending a counter.",
         };
 
-        var noTagsOption = new Option<bool>("--no-tags") { Description = "Skip metadata and cover art.", };
+        var noTagsOption = new Option<bool>("--no-tags")
+        {
+            Description = "Write no metadata at all, not even the title.",
+        };
+
+        var fullTagsOption = new Option<bool>("--full-tags")
+        {
+            Description = "Also write artist, album, genre, year and cover art, not just the title.",
+        };
 
         var command = new Command("get", "Download a track or set.")
         {
@@ -101,6 +109,7 @@ internal static class CommandFactory
             preferOption,
             overwriteOption,
             noTagsOption,
+            fullTagsOption,
         };
 
         command.SetAction((parseResult, cancellationToken) => RunGetAsync(
@@ -112,12 +121,27 @@ internal static class CommandFactory
                     ? SourcePreference.Stream
                     : SourcePreference.Original,
                 parseResult.GetValue(overwriteOption),
-                parseResult.GetValue(noTagsOption),
+                ResolveTagScope(parseResult.GetValue(noTagsOption), parseResult.GetValue(fullTagsOption)),
                 parseResult.GetValue(OAuthOption),
                 parseResult.GetValue(VerboseOption)),
             cancellationToken));
 
         return command;
+    }
+
+    /// <summary>
+    /// Title-only unless told otherwise. <c>--no-tags</c> wins over
+    /// <c>--full-tags</c> when both are given: a file that carries less than
+    /// asked is a smaller problem than one that carries more.
+    /// </summary>
+    private static TagScope ResolveTagScope(bool noTags, bool fullTags)
+    {
+        if (noTags)
+        {
+            return TagScope.None;
+        }
+
+        return fullTags ? TagScope.Full : TagScope.TitleOnly;
     }
 
     private static Command CreateFormatsCommand()
@@ -140,7 +164,7 @@ internal static class CommandFactory
                                        string? Preset,
                                        SourcePreference Prefer,
                                        bool Overwrite,
-                                       bool SkipTags,
+                                       TagScope Tags,
                                        string? OAuthToken,
                                        bool Verbose);
 
@@ -194,16 +218,13 @@ internal static class CommandFactory
                     renderer.Warning("This is a 30 second preview, not the full track. The full stream needs --oauth.");
                 }
 
-                if (!arguments.SkipTags)
-                {
-                    // Only a set carries an album and a running order. A single
-                    // track gets neither rather than a made up one.
-                    SetPosition? position = resolved.SetTitle is { Length: > 0 } setTitle
-                                                ? new SetPosition(setTitle, i + 1, tracks.Count)
-                                                : null;
+                // Only a set carries an album and a running order. A single
+                // track gets neither rather than a made up one.
+                SetPosition? position = resolved.SetTitle is { Length: > 0 } setTitle
+                                            ? new SetPosition(setTitle, i + 1, tracks.Count)
+                                            : null;
 
-                    await tagger.TryTagAsync(result.FilePath, track, position, cancellationToken);
-                }
+                await tagger.TryTagAsync(result.FilePath, track, position, arguments.Tags, cancellationToken);
 
                 renderer.Saved(result);
             }
