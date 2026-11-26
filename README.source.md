@@ -14,7 +14,7 @@ Example Artist - Example Track
 │ Preset   │  Bitrate │ Codec │ Delivery    │ Note                              │
 ├──────────┼──────────┼───────┼─────────────┼───────────────────────────────────┤
 │ aac_160k │ 160 kbps │ AAC   │ hls         │                                   │
-│ abr_sq   │ 160 kbps │ AAC   │ hls         │                                   │
+│ abr_sq   │ 160 kbps │ AAC   │ hls         │ advertised, not served            │
 │ mp3_1_0  │ 128 kbps │ MP3   │ hls         │                                   │
 │ mp3_1_0  │ 128 kbps │ MP3   │ progressive │                                   │
 │ aac_96k  │  96 kbps │ AAC   │ hls         │                                   │
@@ -23,6 +23,10 @@ Example Artist - Example Track
 ! 256 kbps AAC is Go+ only. Pass --oauth to check whether it unlocks here.
 SoundCloud stores no 320 kbps rung; 256 kbps AAC is the ceiling.
 ```
+
+`formats` asks for every rung rather than reading the list SoundCloud publishes, which costs one request per rung and is
+the only way the table can be trusted. `abr_sq` above is why: it is advertised on plenty of tracks and then answers 404,
+so a ladder printed from the published list alone promises a bitrate `get` will never hand over.
 
 ## There is no 320 kbps
 

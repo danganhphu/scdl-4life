@@ -92,7 +92,7 @@ internal sealed class TrackDownloader(HttpClient http,
                                                                 CancellationToken cancellationToken)
     {
         var candidates = SelectCandidates(request.Track, request.Preset);
-        var attempts = new List<string>(candidates.Count);
+        var skipped = new List<string>(candidates.Count);
 
         // No try/catch here on purpose. Stepping down the ladder is an expected
         // outcome, not an error, so the two ways it happens - a rung SoundCloud
@@ -108,7 +108,9 @@ internal sealed class TrackDownloader(HttpClient http,
             if (!streamUri.TryGetValue(out var uri))
             {
                 LogRungSkipped(logger, option.Rung.Preset, streamUri.Error.Message);
-                attempts.Add(streamUri.Error.Message);
+
+                // The message already names the rung and the status code.
+                skipped.Add(streamUri.Error.Message);
 
                 continue;
             }
@@ -144,20 +146,23 @@ internal sealed class TrackDownloader(HttpClient http,
                     Rung = option.Rung,
                     IsPreview = option.Transcoding.Snipped,
                     FellBackFromOriginal = fellBackFromOriginal,
+                    SkippedRungs = skipped,
                 };
             }
 
             // Fragmented MP4 with no muxer installed. Step down the ladder
-            // rather than failing outright, but say so at Warning level: the
-            // file that lands is a lower rung than the one ranked first, and
-            // quietly handing over worse audio is exactly what this tool
-            // exists not to do.
+            // rather than failing outright, but record it: the file that lands
+            // is a lower rung than the one ranked first, and quietly handing
+            // over worse audio is exactly what this tool exists not to do.
             LogSteppedDownForMuxer(logger, option.Rung.Preset, option.Rung.Kbps);
-            attempts.Add($"{option.Rung.Preset} needs a muxer");
+
+            skipped.Add(
+                $"{option.Rung.Preset} ({option.Rung.Kbps} kbps) is fragmented MP4 and ffmpeg is not on PATH. " +
+                "Install it with: winget install Gyan.FFmpeg");
         }
 
         throw new ScdlException(
-            $"No rung could be downloaded. Tried: {string.Join("; ", attempts)}. " +
+            $"No rung could be downloaded. Tried: {string.Join("; ", skipped)}. " +
             "If every rung needs a muxer, install ffmpeg: winget install Gyan.FFmpeg",
             ScdlErrorCode.NoRungDownloadable);
     }
