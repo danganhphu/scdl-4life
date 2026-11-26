@@ -22,7 +22,16 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
         console.MarkupLine($"{position}[bold]{Escape(track.DisplayArtist)}[/] - {Escape(track.DisplayTitle)}");
     }
 
-    public void LadderTable(Track track, IReadOnlyList<StreamOption> options, bool hasToken)
+    /// <summary>
+    /// The ladder, as answered rather than as advertised.
+    /// </summary>
+    /// <remarks>
+    /// Each rung carries the outcome of actually asking for it, because the two
+    /// differ: SoundCloud lists rungs whose stream endpoint then answers 404, so
+    /// a table built from the advertised list alone promises bitrates that
+    /// <c>get</c> will not deliver.
+    /// </remarks>
+    public void LadderTable(Track track, IReadOnlyList<ProbedRung> rungs, bool hasToken)
     {
         var table = new Table()
                     .Border(TableBorder.Rounded)
@@ -32,20 +41,26 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
                     .AddColumn("Delivery")
                     .AddColumn("Note");
 
-        foreach (var option in options)
+        foreach (var probed in rungs)
         {
+            var option = probed.Option;
             var bitrate = option.Rung.IsUnknown ? "[grey]?[/]" : $"{option.Rung.Kbps} kbps";
 
-            var note = option switch
+            // Not served is checked first: it is the only note that changes
+            // what the reader can actually end up with.
+            var note = probed switch
             {
-                { Transcoding.Snipped: true } => "[red]preview only[/]",
-                { Rung.RequiresGoPlus: true } => "[green]Go+ unlocked[/]",
+                { IsServed: false } => "[red]advertised, not served[/]",
+                { Option.Transcoding.Snipped: true } => "[red]preview only[/]",
+                { Option.Rung.RequiresGoPlus: true } => "[green]Go+ unlocked[/]",
                 _ => string.Empty,
             };
 
+            var preset = Escape(option.Rung.Preset);
+
             table.AddRow(
-                Escape(option.Rung.Preset),
-                bitrate,
+                probed.IsServed ? preset : $"[grey]{preset}[/]",
+                probed.IsServed ? bitrate : $"[grey]{bitrate}[/]",
                 Describe(option.Rung.Codec),
                 option.Protocol.ToString().ToLowerInvariant(),
                 note);
@@ -64,7 +79,9 @@ internal sealed class ConsoleRenderer(IAnsiConsole console)
 
         const int ceiling = TranscodingCatalog.LadderCeilingKbps;
 
-        if (!options.Any(option => option.Rung.Kbps >= ceiling))
+        // Served, not merely advertised: an unreachable 256 kbps rung is not an
+        // unlocked one, and saying otherwise is the whole bug this table had.
+        if (!rungs.Any(probed => probed.IsServed && probed.Option.Rung.Kbps >= ceiling))
         {
             // "did not unlock", not "you have no Go+": the token may be stale or
             // the account may lack the subscription, and the two look identical

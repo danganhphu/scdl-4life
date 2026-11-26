@@ -45,6 +45,10 @@ internal sealed class ConsoleRendererTests
             },
         };
 
+    /// <summary>Every advertised rung answered, which is the shape before a probe finds otherwise.</summary>
+    private static IReadOnlyList<ProbedRung> AllServed(Track track)
+        => [.. track.RankStreams().Select(option => new ProbedRung(option, UnservedReason: null))];
+
     [Test]
     [Arguments(0L, "0.0 B")]
     [Arguments(512L, "512.0 B")]
@@ -112,7 +116,55 @@ internal sealed class ConsoleRendererTests
         var console = Console();
         var track = TrackWith("mp3_1_0", "opus_0_0");
 
-        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasToken: false);
+        new ConsoleRenderer(console).LadderTable(track, AllServed(track), hasToken: false);
+
+        await Assert.That(console.Output.Contains("--oauth", StringComparison.Ordinal)).IsTrue();
+    }
+
+    /// <summary>
+    /// The bug the probe exists for: a rung is listed in <c>media.transcodings</c>
+    /// and then answers 404, so a table built from the advertised list alone
+    /// promises a bitrate <c>get</c> will never hand over.
+    /// </summary>
+    [Test]
+    public async Task The_ladder_marks_a_rung_that_is_advertised_but_not_served()
+    {
+        var console = Console();
+        var track = TrackWith("abr_sq", "aac_96k");
+
+        IReadOnlyList<ProbedRung> probed =
+        [
+            .. track.RankStreams()
+                    .Select(option => new ProbedRung(
+                        option,
+                        option.Rung.Preset is "abr_sq" ? "advertised but not served (HTTP 404)" : null)),
+        ];
+
+        new ConsoleRenderer(console).LadderTable(track, probed, hasToken: false);
+
+        await Assert.That(console.Output.Contains("advertised, not served", StringComparison.Ordinal)).IsTrue();
+    }
+
+    /// <summary>
+    /// An unreachable ceiling rung is not an unlocked one. Reading the hint off
+    /// the advertised list alone silenced it for exactly the run that needed the
+    /// explanation.
+    /// </summary>
+    [Test]
+    public async Task The_ladder_still_suggests_oauth_when_the_ceiling_is_advertised_but_not_served()
+    {
+        var console = Console();
+        var track = TrackWith("aac_256k", "mp3_1_0");
+
+        IReadOnlyList<ProbedRung> probed =
+        [
+            .. track.RankStreams()
+                    .Select(option => new ProbedRung(
+                        option,
+                        option.Rung.Kbps >= TranscodingCatalog.LadderCeilingKbps ? "not served" : null)),
+        ];
+
+        new ConsoleRenderer(console).LadderTable(track, probed, hasToken: false);
 
         await Assert.That(console.Output.Contains("--oauth", StringComparison.Ordinal)).IsTrue();
     }
@@ -128,7 +180,7 @@ internal sealed class ConsoleRendererTests
         var console = Console();
         var track = TrackWith("mp3_1_0", "opus_0_0");
 
-        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasToken: true);
+        new ConsoleRenderer(console).LadderTable(track, AllServed(track), hasToken: true);
 
         await Assert.That(console.Output.Contains("did not unlock", StringComparison.Ordinal)).IsTrue();
 
@@ -144,7 +196,7 @@ internal sealed class ConsoleRendererTests
         var console = Console();
         var track = TrackWith("aac_256k", "mp3_1_0");
 
-        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasToken);
+        new ConsoleRenderer(console).LadderTable(track, AllServed(track), hasToken);
 
         await Assert.That(console.Output.Contains("--oauth", StringComparison.Ordinal)).IsFalse();
         await Assert.That(console.Output.Contains("did not unlock", StringComparison.Ordinal)).IsFalse();
@@ -157,7 +209,7 @@ internal sealed class ConsoleRendererTests
         var console = Console();
         var track = TrackWith("mp3_1_0");
 
-        new ConsoleRenderer(console).LadderTable(track, track.RankStreams(), hasToken: true);
+        new ConsoleRenderer(console).LadderTable(track, AllServed(track), hasToken: true);
 
         await Assert.That(console.Output.Contains("no 320 kbps rung", StringComparison.Ordinal)).IsTrue();
     }

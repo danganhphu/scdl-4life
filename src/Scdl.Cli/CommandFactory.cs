@@ -213,6 +213,14 @@ internal static class CommandFactory
                     renderer.Note("  No original master offered; took the best transcoding instead.");
                 }
 
+                // Printed here rather than logged as it happens: the progress
+                // display owns the screen during the transfer, and a console
+                // log line lands on top of the bar.
+                foreach (var skipped in result.SkippedRungs)
+                {
+                    renderer.Warning(skipped);
+                }
+
                 if (result.IsPreview)
                 {
                     renderer.Warning("This is a 30 second preview, not the full track. The full stream needs --oauth.");
@@ -333,10 +341,41 @@ internal static class CommandFactory
         {
             var track = tracks[i];
             renderer.TrackHeading(track, i + 1, tracks.Count);
-            renderer.LadderTable(track, track.RankStreams(), hasToken: oauthToken is { Length: > 0 });
+
+            var probed = await ProbeLadderAsync(soundCloud, track, cancellationToken);
+
+            renderer.LadderTable(track, probed, hasToken: oauthToken is { Length: > 0 });
         }
 
         return ScdlExitCode.Success;
+    }
+
+    /// <summary>
+    /// Asks SoundCloud for each advertised rung in turn and records which ones
+    /// it will actually serve.
+    /// </summary>
+    /// <remarks>
+    /// One request per rung, and that cost is the point: <c>abr_sq</c> is
+    /// routinely advertised and then answers 404, so a ladder printed from
+    /// <c>media.transcodings</c> alone promises a bitrate <c>get</c> will not
+    /// deliver. The signed URL that comes back is thrown away; only whether one
+    /// came back at all is being asked.
+    /// </remarks>
+    private static async Task<IReadOnlyList<ProbedRung>> ProbeLadderAsync(ISoundCloudClient soundCloud,
+                                                                          Track track,
+                                                                          CancellationToken cancellationToken)
+    {
+        var ranked = track.RankStreams();
+        var probed = new List<ProbedRung>(ranked.Count);
+
+        foreach (var option in ranked)
+        {
+            var stream = await soundCloud.GetStreamUriAsync(track, option.Transcoding, cancellationToken);
+
+            probed.Add(new(option, stream.TryGetValue(out _) ? null : stream.Error.Message));
+        }
+
+        return probed;
     }
 
     private static ServiceProvider BuildProvider(string? oauthToken, bool verbose)
