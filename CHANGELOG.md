@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.0](https://github.com/danganhphu/scdl-4life/compare/v0.3.1...v0.4.0) (2026-11-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **tagging:** a download no longer carries artist, album, genre, year or cover art unless --full-tags is given.
+
+### Features
+
+* **tagging:** write only the title by default ([8c53727](https://github.com/danganhphu/scdl-4life/commit/8c53727c2bf6f7a0343184f517768e4e6da3fbdf))
+
+
+### Fixes
+
+* report the rung you actually get, where it can be read ([16e0a48](https://github.com/danganhphu/scdl-4life/commit/16e0a48ab34b22b2dad2c38f6d462b180c03e137))
+
 ## [0.3.1](https://github.com/danganhphu/scdl-4life/compare/v0.3.0...v0.3.1) (2026-10-08)
 
 
